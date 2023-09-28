@@ -12,7 +12,7 @@
 #include "Stanza.h"
 
 bool CXMPPModule::OnLoad(const CString& sArgs, CString& sMessage) {
-	m_sServerName = sArgs.Token(1);
+	m_sServerName = sArgs.Token(0);
 	if (m_sServerName.empty()) {
 		m_sServerName = "localhost";
 	}
