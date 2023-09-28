@@ -22,7 +22,7 @@ public:
 	void ClientConnected(CXMPPClient &Client);
 	void ClientDisconnected(CXMPPClient &Client);
 
-	vector<CXMPPClient*>& GetClients() { return m_vClients; };
+	std::vector<CXMPPClient*>& GetClients() { return m_vClients; };
 	CXMPPClient* Client(CUser& User, CString sResource) const;
 	CXMPPClient* Client(const CXMPPJID& jid, bool bAcceptNegative = true) const;
 
@@ -32,7 +32,7 @@ public:
 	void SendStanza(CXMPPStanza &Stanza);
 
 protected:
-	vector<CXMPPClient*> m_vClients;
+	std::vector<CXMPPClient*> m_vClients;
 	CString m_sServerName;
 };
 

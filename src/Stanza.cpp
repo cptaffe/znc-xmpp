@@ -23,7 +23,7 @@ CXMPPStanza::CXMPPStanza(CString sName, CString sNamespace) {
 
 CXMPPStanza::~CXMPPStanza() {
 	/* Kill our children */
-	for (vector<CXMPPStanza*>::iterator it = m_vChildren.begin(); it != m_vChildren.end();) {
+	for (std::vector<CXMPPStanza*>::iterator it = m_vChildren.begin(); it != m_vChildren.end();) {
 		CXMPPStanza *pChild = *it;
 		it = m_vChildren.erase(it);
 		delete pChild;
@@ -44,7 +44,7 @@ CString CXMPPStanza::ToString() const {
 
 		sOutput += ">";
 
-		vector<CXMPPStanza*>::const_iterator it;
+		std::vector<CXMPPStanza*>::const_iterator it;
 		for (it = m_vChildren.begin(); it != m_vChildren.end(); ++it) {
 			CXMPPStanza *pChild = *it;
 			sOutput += pChild->ToString();
@@ -156,7 +156,7 @@ CXMPPStanza& CXMPPStanza::NewChild(CString sName, CString sNamespace) {
 }
 
 CXMPPStanza* CXMPPStanza::GetChildByName(CString sName) const {
-	vector<CXMPPStanza*>::const_iterator it;
+	std::vector<CXMPPStanza*>::const_iterator it;
 	for (it = m_vChildren.begin(); it != m_vChildren.end(); ++it) {
 		CXMPPStanza *pChild = *it;
 
@@ -169,7 +169,7 @@ CXMPPStanza* CXMPPStanza::GetChildByName(CString sName) const {
 }
 
 CXMPPStanza* CXMPPStanza::GetTextChild() const {
-	vector<CXMPPStanza*>::const_iterator it;
+	std::vector<CXMPPStanza*>::const_iterator it;
 	for (it = m_vChildren.begin(); it != m_vChildren.end(); ++it) {
 		CXMPPStanza *pChild = *it;
 

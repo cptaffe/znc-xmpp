@@ -25,7 +25,7 @@ bool CXMPPModule::OnLoad(const CString& sArgs, CString& sMessage) {
 
 CModule::EModRet CXMPPModule::OnDeleteUser(CUser& User) {
 	// Delete clients
-	vector<CXMPPClient*>::iterator it;
+	std::vector<CXMPPClient*>::iterator it;
 	for (it = m_vClients.begin(); it != m_vClients.end();) {
 		CXMPPClient *pClient = *it;
 
@@ -45,7 +45,7 @@ void CXMPPModule::ClientConnected(CXMPPClient &Client) {
 }
 
 void CXMPPModule::ClientDisconnected(CXMPPClient &Client) {
-	vector<CXMPPClient*>::iterator it;
+	std::vector<CXMPPClient*>::iterator it;
 	for (it = m_vClients.begin(); it != m_vClients.end(); ++it) {
 		CXMPPClient *pClient = *it;
 
@@ -57,7 +57,7 @@ void CXMPPModule::ClientDisconnected(CXMPPClient &Client) {
 }
 
 CXMPPClient* CXMPPModule::Client(CUser& User, CString sResource) const {
-	vector<CXMPPClient*>::const_iterator it;
+	std::vector<CXMPPClient*>::const_iterator it;
 	for (it = m_vClients.begin(); it != m_vClients.end(); ++it) {
 		CXMPPClient *pClient = *it;
 
@@ -76,7 +76,7 @@ CXMPPClient* CXMPPModule::Client(const CXMPPJID& jid, bool bAcceptNegative) cons
 
 	CXMPPClient *pCurrent = NULL;
 
-	vector<CXMPPClient*>::const_iterator it;
+	std::vector<CXMPPClient*>::const_iterator it;
 	for (it = m_vClients.begin(); it != m_vClients.end(); ++it) {
 		CXMPPClient *pClient = *it;
 
