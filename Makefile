@@ -1,4 +1,4 @@
-CXX := g++
+CXX := clang++
 CXXFLAGS := -I/usr/include/libxml2 -fPIC
 LIBS := -lxml2
 
