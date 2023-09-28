@@ -88,6 +88,8 @@ void CXMPPClient::StreamStart(CXMPPStanza &Stanza) {
 		plain.NewChild().SetText("PLAIN");
 	}
 
+	features.NewChild("auth", "http://jabber.org/features/iq-auth");
+
 	Write(features);
 }
 
@@ -135,11 +137,81 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 			CXMPPStanza failure("failure", "urn:ietf:params:xml:ns:xmpp-sasl");
 			failure.NewChild("not-authorized");
 			Write(failure);
-		} else {
-			CXMPPStanza failure("failure", "urn:ietf:params:xml:ns:xmpp-sasl");
-			failure.NewChild("invalid-mechanism");
-			Write(failure);
+			return;
 		}
+
+		CXMPPStanza failure("failure", "urn:ietf:params:xml:ns:xmpp-sasl");
+		failure.NewChild("invalid-mechanism");
+		Write(failure);
+		return;
+	} else if (Stanza.GetName().Equals("iq")) {
+		CXMPPStanza iq("iq");
+		iq.SetAttribute("id", Stanza.GetAttribute("id"));
+
+		CXMPPStanza *pQuery = Stanza.GetChildByName("query");
+		if (pQuery && pQuery->GetAttribute("xmlns").Equals("jabber:iq:auth")) {
+			if (Stanza.GetAttribute("type").Equals("get")) {
+				iq.SetAttribute("type", "result");
+				CXMPPStanza &query = iq.NewChild("query", "jabber:iq:auth");
+				query.NewChild("username");
+				query.NewChild("password");
+				query.NewChild("resource");
+				Write(iq);
+				return;
+			} else if (Stanza.GetAttribute("type").Equals("set")) {
+				CXMPPStanza *pUsername = pQuery->GetChildByName("username");
+				CXMPPStanza *pPassword = pQuery->GetChildByName("password");
+
+				if (pUsername && pPassword) {
+					pUsername = pUsername->GetTextChild();
+					pPassword = pPassword->GetTextChild();
+				}
+
+				CString sUsername = "unknown";
+				if (pUsername && pPassword) {
+					sUsername = pUsername->GetText().c_str();
+					CString sPassword = pPassword->GetText().c_str();
+
+					CUser *pUser = CZNC::Get().FindUser(sUsername);
+
+					if (pUser && pUser->CheckPass(sPassword)) {
+						iq.SetAttribute("type", "result");
+						Write(iq);
+
+						m_pUser = pUser;
+						DEBUG("XMPPClient jabber:iq:auth for [" << sUsername << "] success.");
+
+						/* Restart the stream */
+						m_bResetParser = true;
+
+						return;
+					}
+
+					DEBUG("XMPPClient jabber:iq:auth for [" << sUsername << "] failed: incorrect credentials.");
+
+					/* Incorrect Credentials */
+					iq.SetAttribute("type", "error");
+					CXMPPStanza &error = iq.NewChild("error");
+					error.SetAttribute("code", "401");
+					error.SetAttribute("type", "auth");
+					error.NewChild("not-authorized", "urn:ietf:params:xml:ns:xmpp-stanzas");
+					Write(iq);
+					return;
+				}
+
+				DEBUG("XMPPClient jabber:iq:auth for [" << sUsername << "] failed: required information not provided.");
+
+				/* Required Information Not Provided */
+				iq.SetAttribute("type", "error");
+				CXMPPStanza &error = iq.NewChild("error");
+				error.SetAttribute("code", "406");
+				error.SetAttribute("type", "modify");
+				error.NewChild("not-acceptable", "urn:ietf:params:xml:ns:xmpp-stanzas");
+				Write(iq);
+				return;
+			}
+		}
+		/* Other iq stanzas are handled further down */
 	} else if (Stanza.GetName().Equals("starttls")) {
 #ifdef HAVE_LIBSSL
 		if (!GetSSL() && ((CXMPPModule*)m_pModule)->IsTLSAvailible()) {
@@ -158,9 +230,11 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 		Write(CXMPPStanza("failure", "urn:ietf:params:xml:ns:xmpp-tls"));
 		Write("</stream:stream>");
 		Close(Csock::CLT_AFTERWRITE);
+		return;
 	}
 
 	if (!m_pUser) {
+		/* TODO: return an error */
 		return; /* the following stanzas require auth */
 	}
 
