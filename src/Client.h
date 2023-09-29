@@ -28,7 +28,7 @@ public:
 	bool Write(const CXMPPStanza& Stanza);
 	bool Write(CXMPPStanza& Stanza, const CXMPPStanza *pStanza);
 
-	void Error(CString tag, CString type, CString code = "");
+	void Error(CString tag, CString type, CString code = "", const CXMPPStanza *pStanza = NULL);
 
 	virtual void StreamStart(CXMPPStanza &Stanza);
 	virtual void ReceiveStanza(CXMPPStanza &Stanza);

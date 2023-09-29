@@ -49,7 +49,9 @@ bool CXMPPClient::Write(const CXMPPStanza& Stanza) {
 }
 
 bool CXMPPClient::Write(CXMPPStanza &Stanza, const CXMPPStanza *pStanza) {
-	Stanza.SetAttribute("to", GetJID());
+	if (m_pUser) {
+		Stanza.SetAttribute("to", GetJID());
+	}
 
 	if (pStanza && pStanza->HasAttribute("id")) {
 		Stanza.SetAttribute("id", pStanza->GetAttribute("id"));
@@ -57,7 +59,7 @@ bool CXMPPClient::Write(CXMPPStanza &Stanza, const CXMPPStanza *pStanza) {
 	return Write(Stanza.ToString());
 }
 
-void CXMPPClient::Error(CString tag, CString type, CString code) {
+void CXMPPClient::Error(CString tag, CString type, CString code, const CXMPPStanza *pStanza) {
 	CXMPPStanza iq("iq");
 	iq.SetAttribute("to", GetJID());
 	iq.SetAttribute("type", "error");
@@ -67,7 +69,7 @@ void CXMPPClient::Error(CString tag, CString type, CString code) {
 	}
 	error.SetAttribute("type", type);
 	error.NewChild(tag, "urn:ietf:params:xml:ns:xmpp-stanzas");
-	Write(iq);
+	Write(iq, pStanza);
 }
 
 void CXMPPClient::StreamStart(CXMPPStanza &Stanza) {
@@ -178,10 +180,12 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 			} else if (Stanza.GetAttribute("type").Equals("set")) {
 				CXMPPStanza *pUsername = pQuery->GetChildByName("username");
 				CXMPPStanza *pPassword = pQuery->GetChildByName("password");
+				CXMPPStanza *pResource = pQuery->GetChildByName("password");
 
 				if (pUsername && pPassword) {
 					pUsername = pUsername->GetTextChild();
 					pPassword = pPassword->GetTextChild();
+					pResource = pResource->GetTextChild();
 				}
 
 				CString sUsername = "unknown";
@@ -197,6 +201,9 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						Write(iq);
 
 						m_pUser = pUser;
+						if (pResource) {
+							m_sResource = pResource->GetText().c_str();
+						}
 						DEBUG("XMPPClient jabber:iq:auth for [" << sUsername << "] success.");
 
 						return;
@@ -205,14 +212,14 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					DEBUG("XMPPClient jabber:iq:auth for [" << sUsername << "] failed: incorrect credentials.");
 
 					/* Incorrect Credentials */
-					Error("not-authorized", "auth", "401");
+					Error("not-authorized", "auth", "401", &Stanza);
 					return;
 				}
 
 				DEBUG("XMPPClient jabber:iq:auth for [" << sUsername << "] failed: required information not provided.");
 
 				/* Required Information Not Provided */
-				Error("not-acceptable", "modify", "406");
+				Error("not-acceptable", "modify", "406", &Stanza);
 				return;
 			}
 		}
@@ -239,7 +246,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 	}
 
 	if (!m_pUser) {
-		Error("forbidden", "auth", "403");
+		Error("forbidden", "auth", "403", &Stanza);
 		return; /* the following stanzas require auth */
 	}
 
@@ -294,33 +301,45 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 				}
 
 				/* MUC: Querying Room Information: https://xmpp.org/extensions/xep-0045.html#disco-roominfo */
-				if (pQuery->GetAttribute("xmlns").Equals("http://jabber.org/protocol/disco#info")
-						&& to.IsLocal(*GetModule()) && to.IsIRCChannel()) {
-					CIRCNetwork *network = m_pUser->FindNetwork(to.GetIRCNetwork());
-					if (network) {
-						CChan *channel = network->FindChan(to.GetIRCTarget());
-						if (channel) {
-							iq.SetAttribute("type", "result");
-							CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#info");
-							CXMPPStanza &identity = query.NewChild("identity");
-							identity.SetAttribute("category", "conference");
-							identity.SetAttribute("name", channel->GetName() + " on " + network->GetName());
-							identity.SetAttribute("type", "text");
-							query.NewChild("feature").SetAttribute("var", "gc-1.0");
-							query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/muc");
-							query.NewChild("feature").SetAttribute("var", "muc_nonanonymous");
-							query.NewChild("feature").SetAttribute("var", "muc_open");
-							query.NewChild("feature").SetAttribute("var", "muc_persistent");
-							query.NewChild("feature").SetAttribute("var", "muc_public");
+				if (pQuery->GetAttribute("xmlns").Equals("http://jabber.org/protocol/disco#info")) {
+					if (Stanza.GetAttribute("to").Equals(GetServerName())) {
+						iq.SetAttribute("type", "result");
+						CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#info");
+						CXMPPStanza &identity = query.NewChild("identity");
+						identity.SetAttribute("category", "conference");
+						identity.SetAttribute("name", "XMPP Gateway ZNC Module");
+						identity.SetAttribute("type", "text");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/muc");
 
+						Write(iq, &Stanza);
+						return;
+					}
 
-							Write(iq, &Stanza);
-							return;
+					if (to.IsLocal(*GetModule()) && to.IsIRCChannel()) {
+						CIRCNetwork *network = m_pUser->FindNetwork(to.GetIRCNetwork());
+						if (network) {
+							CChan *channel = network->FindChan(to.GetIRCTarget());
+							if (channel) {
+								iq.SetAttribute("type", "result");
+								CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#info");
+								CXMPPStanza &identity = query.NewChild("identity");
+								identity.SetAttribute("category", "conference");
+								identity.SetAttribute("name", channel->GetName() + " on " + network->GetName());
+								identity.SetAttribute("type", "text");
+								query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/muc");
+								query.NewChild("feature").SetAttribute("var", "muc_nonanonymous");
+								query.NewChild("feature").SetAttribute("var", "muc_open");
+								query.NewChild("feature").SetAttribute("var", "muc_persistent");
+								query.NewChild("feature").SetAttribute("var", "muc_public");
+
+								Write(iq, &Stanza);
+								return;
+							}
 						}
 					}
 
 					/* Item Not Found */
-					Error("item-not-found", "cancel", "404");
+					Error("item-not-found", "cancel", "404", &Stanza);
 					return;
 				}
 
@@ -354,7 +373,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					/* Retrieving user's own vCard */
 
 					/* Item Not Found */
-					Error("item-not-found", "cancel", "404");
+					Error("item-not-found", "cancel", "404", &Stanza);
 					return;
 				}
 			}
@@ -384,21 +403,13 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 				if (sResource.empty()) {
 					/* Invalid resource*/
-					iq.SetAttribute("type", "error");
-					CXMPPStanza& error = iq.NewChild("error");
-					error.SetAttribute("type", "modify");
-					error.NewChild("bad-request", "urn:ietf:params:xml:ns:xmpp-stanzas");
-					Write(iq, &Stanza);
+					Error("bad-request", "modify", "400", &Stanza);
 					return;
 				}
 
 				if (((CXMPPModule*)m_pModule)->Client(*m_pUser, sResource)) {
 					/* We already have a client with this resource */
-					iq.SetAttribute("type", "error");
-					CXMPPStanza& error = iq.NewChild("error");
-					error.SetAttribute("type", "modify");
-					error.NewChild("conflict", "urn:ietf:params:xml:ns:xmpp-stanzas");
-					Write(iq, &Stanza);
+					Error("conflict", "cancel", "409", &Stanza);
 					return;
 				}
 
