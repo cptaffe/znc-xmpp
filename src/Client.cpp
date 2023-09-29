@@ -411,6 +411,8 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						message.SetParam(0, targetName);
 						message.SetParam(1, body);
 
+						GetModule()->PutModule("sending message: " + message.ToString());
+
 						network->PutIRC(message);
 						return;
 					}
