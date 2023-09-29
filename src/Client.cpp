@@ -407,13 +407,13 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					CIRCNetwork *network = m_pUser->FindNetwork(networkName);
 					if (network) {
 						CMessage message;
+						message.SetNick(network->GetIRCNick());
 						message.SetCommand("PRIVMSG");
 						message.SetParam(0, targetName);
 						message.SetParam(1, body);
 
-						GetModule()->PutModule("sending message: " + message.ToString());
-
 						network->PutIRC(message);
+						network->PutUser(message);
 						return;
 					}
 				}
