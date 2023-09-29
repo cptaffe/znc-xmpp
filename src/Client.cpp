@@ -235,7 +235,13 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 	}
 
 	if (!m_pUser) {
-		/* TODO: return an error */
+		CXMPPStanza iq("iq");
+		iq.SetAttribute("type", "error");
+		CXMPPStanza &error = iq.NewChild("error");
+		error.SetAttribute("code", "403");
+		error.SetAttribute("type", "auth");
+		error.NewChild("forbidden", "urn:ietf:params:xml:ns:xmpp-stanzas");
+		Write(iq);
 		return; /* the following stanzas require auth */
 	}
 
@@ -255,7 +261,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 				if (pQuery->GetAttribute("xmlns").Equals("http://jabber.org/protocol/disco#items")
 						&& Stanza.GetAttribute("to").Equals(GetServerName())) {
 					iq.SetAttribute("type", "result");
-					CXMPPStanza& query = iq.NewChild("query", "http://jabber.org/protocol/disco#info");
+					iq.NewChild("query", "http://jabber.org/protocol/disco#info");
 					Write(iq, &Stanza);
 					return;
 				}
