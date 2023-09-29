@@ -279,6 +279,11 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						if (!network->IsIRCConnected())
 							continue;
 
+						// Add yourself
+						CXMPPStanza &item = query.NewChild("item");
+						item.SetAttribute("jid", network->GetCurNick() + "!" + network->GetName() + "+irc@" + GetServerName());
+						item.SetAttribute("name", "You on " + network->GetName());
+
 						// Enumerate channels
 						const std::vector<CChan*> &channels = network->GetChans();
 						for (std::vector<CChan*>::const_iterator it = channels.begin(); it != channels.end(); ++it) {
@@ -288,10 +293,12 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 							// Present each channel as a room
 							// JID grammar: https://xmpp.org/extensions/xep-0029.html#sect-idm45406366945648
-							CString jid = channel->GetName() + "!" + network->GetName() + "+irc" + "@" + GetServerName();
+							CString jid = channel->GetName() + "!" + network->GetName() + "+irc@" + GetServerName();
+							CString name = "The " + channel->GetName() + " IRC channel on the " + network->GetName() + " network.";
 
 							CXMPPStanza &item = query.NewChild("item");
 							item.SetAttribute("jid", jid);
+							item.SetAttribute("name", name);
 						}
 					}
 
@@ -384,6 +391,34 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 		Write(iq, &Stanza);
 		return;
 	} else if (Stanza.GetName().Equals("message")) {
+		CXMPPJID to(Stanza.GetAttribute("to"));
+
+		// IRC interface
+		if (to.IsIRC()) {
+			CString targetName = to.GetIRCTarget();
+			CString networkName = to.GetIRCNetwork();
+
+			CXMPPStanza *pBody = Stanza.GetChildByName("body");
+			if (pBody) {
+				CXMPPStanza *pBodyText = pBody->GetTextChild();
+				if (pBodyText) {
+					CString body = pBodyText->GetText().c_str();
+
+					CIRCNetwork *network = m_pUser->FindNetwork(networkName);
+					if (network) {
+						CMessage message;
+						message.SetNick(network->GetIRCNick());
+						message.SetCommand("PRIVMSG");
+						message.SetParam(0, targetName);
+						message.SetParam(1, body);
+
+						network->PutIRC(message);
+						return;
+					}
+				}
+			}
+		}
+
 		GetModule()->SendStanza(Stanza);
 		return;
 	} else if (Stanza.GetName().Equals("presence")) {

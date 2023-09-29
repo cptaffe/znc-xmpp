@@ -35,3 +35,23 @@ CString CXMPPJID::ToString() const {
 bool CXMPPJID::IsLocal(const CXMPPModule &Module) const {
 	return m_sDomain.Equals(Module.GetServerName());
 }
+
+bool CXMPPJID::IsIRC() const {
+	return m_sUser.EndsWith("+irc");
+}
+
+bool CXMPPJID::IsIRCChannel() const {
+	return IsIRC() && m_sUser.StartsWith("#");
+}
+
+bool CXMPPJID::IsIRCUser() const {
+	return IsIRC() && !IsIRCChannel();
+}
+
+CString CXMPPJID::GetIRCTarget() const {
+	return m_sUser.Token(0, false, "!");
+}
+
+CString CXMPPJID::GetIRCNetwork() const {
+	return m_sUser.Token(1, false, "!").Token(0, false, "+irc");
+}

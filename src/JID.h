@@ -24,6 +24,13 @@ public:
 
 	bool IsLocal(const CXMPPModule &Module) const;
 
+	// IRC bridge
+	bool IsIRC() const;
+	bool IsIRCChannel() const;
+	bool IsIRCUser() const;
+	CString GetIRCTarget() const;
+	CString GetIRCNetwork() const;
+
 protected:
 	CString m_sUser;
 	CString m_sDomain;
