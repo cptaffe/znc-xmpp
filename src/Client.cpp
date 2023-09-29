@@ -258,7 +258,10 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 			CXMPPStanza *pQuery = Stanza.GetChildByName("query");
 			if (pQuery) {
+				CXMPPJID to(Stanza.GetAttribute("to"));
+
 				/* Service Discovery: https://xmpp.org/extensions/xep-0030.html */
+				/* MUC: Discovering Rooms: https://xmpp.org/extensions/xep-0045.html#disco-rooms */
 				if (pQuery->GetAttribute("xmlns").Equals("http://jabber.org/protocol/disco#items")
 						&& Stanza.GetAttribute("to").Equals(GetServerName())) {
 					iq.SetAttribute("type", "result");
@@ -270,11 +273,6 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						CIRCNetwork *network = *it;
 						if (!network->IsIRCConnected())
 							continue;
-
-						// Add yourself
-						CXMPPStanza &item = query.NewChild("item");
-						item.SetAttribute("jid", network->GetCurNick() + "!" + network->GetName() + "+irc@" + GetServerName());
-						item.SetAttribute("name", "You on " + network->GetName());
 
 						// Enumerate channels
 						const std::vector<CChan*> &channels = network->GetChans();
@@ -296,6 +294,24 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 					Write(iq, &Stanza);
 					return;
+				}
+
+				/* MUC: Querying Room Information: https://xmpp.org/extensions/xep-0045.html#disco-roominfo */
+				if (pQuery->GetAttribute("xmlns").Equals("http://jabber.org/protocol/disco#info")
+						&& to.IsLocal(*GetModule()) && to.IsIRCChannel()) {
+					CIRCNetwork *network = m_pUser->FindNetwork(to.GetIRCNetwork());
+					if (network) {
+						CChan *channel = network->FindChan(to.GetIRCTarget());
+						if (channel) {
+							iq.SetAttribute("type", "result");
+							CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#info");
+							CXMPPStanza &identity = query.NewChild("identity");
+							identity.SetAttribute("category", "conference");
+							identity.SetAttribute("name", channel->GetName() + " on " + network->GetName());
+							identity.SetAttribute("type", "text");
+							identity.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/muc");
+						}
+					}
 				}
 
 				/* Roster Get: https://xmpp.org/rfcs/rfc6121.html#roster-syntax-actions-get */
