@@ -6,6 +6,9 @@
  * by the Free Software Foundation.
  */
 
+#include <znc/IRCNetwork.h>
+#include <znc/Chan.h>
+
 #include "Client.h"
 #include "xmpp.h"
 
@@ -169,6 +172,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 				}
 
 				CString sUsername = "unknown";
+
 				if (pUsername && pPassword) {
 					sUsername = pUsername->GetText().c_str();
 					CString sPassword = pPassword->GetText().c_str();
@@ -259,6 +263,38 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						&& Stanza.GetAttribute("to").Equals(GetServerName())) {
 					iq.SetAttribute("type", "result");
 					iq.NewChild("query", "http://jabber.org/protocol/disco#info");
+					Write(iq, &Stanza);
+					return;
+				}
+
+				/* Roster Get: https://xmpp.org/rfcs/rfc6121.html#roster-syntax-actions-get */
+				if (pQuery->GetAttribute("xmlns").Equals("jabber:iq:roster")) {
+					iq.SetAttribute("type", "result");
+					CXMPPStanza &query = iq.NewChild("query", "jabber:iq:roster");
+
+					// Enumerate networks
+					const std::vector<CIRCNetwork*> &networks = m_pUser->GetNetworks();
+					for (std::vector<CIRCNetwork*>::const_iterator it = networks.begin(); it != networks.end(); ++it) {
+						CIRCNetwork *network = *it;
+						if (!network->IsIRCConnected())
+							continue;
+
+						// Enumerate channels
+						const std::vector<CChan*> &channels = network->GetChans();
+						for (std::vector<CChan*>::const_iterator it = channels.begin(); it != channels.end(); ++it) {
+							CChan *channel = *it;
+							if (!channel->IsOn())
+								continue;
+
+							// Present each channel as a room
+							// JID grammar: https://xmpp.org/extensions/xep-0029.html#sect-idm45406366945648
+							CString jid = channel->GetName() + "!" + network->GetName() + "+irc" + "@" + GetServerName();
+
+							CXMPPStanza &item = query.NewChild("item");
+							item.SetAttribute("jid", jid);
+						}
+					}
+
 					Write(iq, &Stanza);
 					return;
 				}
