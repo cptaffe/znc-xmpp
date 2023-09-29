@@ -262,15 +262,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 				if (pQuery->GetAttribute("xmlns").Equals("http://jabber.org/protocol/disco#items")
 						&& Stanza.GetAttribute("to").Equals(GetServerName())) {
 					iq.SetAttribute("type", "result");
-					iq.NewChild("query", "http://jabber.org/protocol/disco#info");
-					Write(iq, &Stanza);
-					return;
-				}
-
-				/* Roster Get: https://xmpp.org/rfcs/rfc6121.html#roster-syntax-actions-get */
-				if (pQuery->GetAttribute("xmlns").Equals("jabber:iq:roster")) {
-					iq.SetAttribute("type", "result");
-					CXMPPStanza &query = iq.NewChild("query", "jabber:iq:roster");
+					CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#items");
 
 					// Enumerate networks
 					const std::vector<CIRCNetwork*> &networks = m_pUser->GetNetworks();
@@ -300,6 +292,28 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 							item.SetAttribute("jid", jid);
 							item.SetAttribute("name", name);
 						}
+					}
+
+					Write(iq, &Stanza);
+					return;
+				}
+
+				/* Roster Get: https://xmpp.org/rfcs/rfc6121.html#roster-syntax-actions-get */
+				if (pQuery->GetAttribute("xmlns").Equals("jabber:iq:roster")) {
+					iq.SetAttribute("type", "result");
+					CXMPPStanza &query = iq.NewChild("query", "jabber:iq:roster");
+
+					// Enumerate networks
+					const std::vector<CIRCNetwork*> &networks = m_pUser->GetNetworks();
+					for (std::vector<CIRCNetwork*>::const_iterator it = networks.begin(); it != networks.end(); ++it) {
+						CIRCNetwork *network = *it;
+						if (!network->IsIRCConnected())
+							continue;
+
+						// Add yourself
+						CXMPPStanza &item = query.NewChild("item");
+						item.SetAttribute("jid", network->GetCurNick() + "!" + network->GetName() + "+irc@" + GetServerName());
+						item.SetAttribute("name", "You on " + network->GetName());
 					}
 
 					Write(iq, &Stanza);
