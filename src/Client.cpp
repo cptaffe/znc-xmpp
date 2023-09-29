@@ -182,9 +182,6 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						m_pUser = pUser;
 						DEBUG("XMPPClient jabber:iq:auth for [" << sUsername << "] success.");
 
-						/* Restart the stream */
-						m_bResetParser = true;
-
 						return;
 					}
 
