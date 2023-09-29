@@ -162,11 +162,13 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 		return CModule::CONTINUE;
 	}
 
+	CString channelJID = channel->GetName() + "!" + network->GetName() + "+irc@" + GetServerName();
+
 	CXMPPStanza iq("message");
 	iq.SetAttribute("id", "znc_" + CString::RandomString(8));
 	iq.SetAttribute("type", "groupchat");
-	iq.SetAttribute("from", nick.GetNick() + "!" + network->GetName() + "+irc@" + GetServerName());
-	iq.SetAttribute("to", channel->GetName() + "!" + network->GetName() + "+irc@" + GetServerName());
+	iq.SetAttribute("from", channelJID + "/" + nick.GetNick());
+	iq.SetAttribute("to", channelJID);
 	CXMPPStanza &body = iq.NewChild("body");
 	body.NewChild().SetText(message.GetText());
 
