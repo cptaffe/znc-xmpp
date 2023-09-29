@@ -57,6 +57,19 @@ bool CXMPPClient::Write(CXMPPStanza &Stanza, const CXMPPStanza *pStanza) {
 	return Write(Stanza.ToString());
 }
 
+void CXMPPClient::Error(CString tag, CString type, CString code) {
+	CXMPPStanza iq("iq");
+	iq.SetAttribute("to", GetJID());
+	iq.SetAttribute("type", "error");
+	CXMPPStanza &error = iq.NewChild("error");
+	if (!code.empty()) {
+		error.SetAttribute("code", code);
+	}
+	error.SetAttribute("type", type);
+	error.NewChild(tag, "urn:ietf:params:xml:ns:xmpp-stanzas");
+	Write(iq);
+}
+
 void CXMPPClient::StreamStart(CXMPPStanza &Stanza) {
 	Write("<?xml version='1.0' ?>");
 	Write("<stream:stream from='" + GetServerName() + "' version='1.0' xml:lang='en' xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams'>");
@@ -192,24 +205,14 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					DEBUG("XMPPClient jabber:iq:auth for [" << sUsername << "] failed: incorrect credentials.");
 
 					/* Incorrect Credentials */
-					iq.SetAttribute("type", "error");
-					CXMPPStanza &error = iq.NewChild("error");
-					error.SetAttribute("code", "401");
-					error.SetAttribute("type", "auth");
-					error.NewChild("not-authorized", "urn:ietf:params:xml:ns:xmpp-stanzas");
-					Write(iq);
+					Error("not-authorized", "auth", "401");
 					return;
 				}
 
 				DEBUG("XMPPClient jabber:iq:auth for [" << sUsername << "] failed: required information not provided.");
 
 				/* Required Information Not Provided */
-				iq.SetAttribute("type", "error");
-				CXMPPStanza &error = iq.NewChild("error");
-				error.SetAttribute("code", "406");
-				error.SetAttribute("type", "modify");
-				error.NewChild("not-acceptable", "urn:ietf:params:xml:ns:xmpp-stanzas");
-				Write(iq);
+				Error("not-acceptable", "modify", "406");
 				return;
 			}
 		}
@@ -236,13 +239,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 	}
 
 	if (!m_pUser) {
-		CXMPPStanza iq("iq");
-		iq.SetAttribute("type", "error");
-		CXMPPStanza &error = iq.NewChild("error");
-		error.SetAttribute("code", "403");
-		error.SetAttribute("type", "auth");
-		error.NewChild("forbidden", "urn:ietf:params:xml:ns:xmpp-stanzas");
-		Write(iq);
+		Error("forbidden", "auth", "403");
 		return; /* the following stanzas require auth */
 	}
 
@@ -310,8 +307,15 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 							identity.SetAttribute("name", channel->GetName() + " on " + network->GetName());
 							identity.SetAttribute("type", "text");
 							identity.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/muc");
+
+							Write(iq, &Stanza);
+							return;
 						}
 					}
+
+					/* Item Not Found */
+					Error("item-not-found", "cancel", "404");
+					return;
 				}
 
 				/* Roster Get: https://xmpp.org/rfcs/rfc6121.html#roster-syntax-actions-get */
@@ -344,12 +348,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					/* Retrieving user's own vCard */
 
 					/* Item Not Found */
-					iq.SetAttribute("type", "error");
-					iq.NewChild("vCard", "vcard-temp");
-					CXMPPStanza &error = iq.NewChild("error");
-					error.SetAttribute("type", "cancel");
-					error.NewChild("item-not-found", "urn:ietf:params:xml:ns:xmpp-stanzas");
-					Write(iq, &Stanza);
+					Error("item-not-found", "cancel", "404");
 					return;
 				}
 			}
