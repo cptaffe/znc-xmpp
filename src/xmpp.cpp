@@ -174,6 +174,8 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 
 	for (std::vector<CXMPPClient*>::const_iterator it = m_vClients.begin(); it != m_vClients.end(); ++it) {
 		CXMPPClient *client = *it;
+		if (!client->GetUser())
+			continue; // unauthenticated
 
 		client->Write(iq);
 	}
@@ -199,6 +201,8 @@ CModule::EModRet CXMPPModule::OnPrivTextMessage(CTextMessage& message) {
 
 	for (std::vector<CXMPPClient*>::const_iterator it = m_vClients.begin(); it != m_vClients.end(); ++it) {
 		CXMPPClient *client = *it;
+		if (!client->GetUser())
+			continue; // unauthenticated
 
 		iq.SetAttribute("to", client->GetJID());
 		client->Write(iq);
