@@ -26,7 +26,7 @@ public:
 
 	bool Write(CString sData);
 	bool Write(const CXMPPStanza& Stanza);
-	bool Write(CXMPPStanza& Stanza, const CXMPPStanza *pStanza = NULL);
+	bool Write(CXMPPStanza& Stanza, const CXMPPStanza *pStanza);
 
 	virtual void StreamStart(CXMPPStanza &Stanza);
 	virtual void ReceiveStanza(CXMPPStanza &Stanza);
