@@ -179,5 +179,31 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 	return CModule::CONTINUE;
 }
 
+
+CModule::EModRet CXMPPModule::OnPrivTextMessage(CTextMessage& message) {
+	CIRCNetwork *network = message.GetNetwork();
+	CNick &nick = message.GetNick();
+
+	if (!network) {
+		return CModule::CONTINUE;
+	}
+
+	CXMPPStanza iq("message");
+	iq.SetAttribute("id", "znc_" + CString::RandomString(8));
+	iq.SetAttribute("type", "chat");
+	iq.SetAttribute("from", nick.GetNick() + "!" + network->GetName() + "+irc@" + GetServerName());
+	CXMPPStanza &body = iq.NewChild("body");
+	body.NewChild().SetText(message.GetText());
+
+	for (std::vector<CXMPPClient*>::const_iterator it = m_vClients.begin(); it != m_vClients.end(); ++it) {
+		CXMPPClient *client = *it;
+
+		iq.SetAttribute("to", client->GetJID());
+		client->Write(iq);
+	}
+
+	return CModule::CONTINUE;
+}
+
 GLOBALMODULEDEFS(CXMPPModule, "XMPP support for ZNC");
 

@@ -31,6 +31,7 @@ public:
 
 	void SendStanza(CXMPPStanza &Stanza);
 
+	CModule::EModRet OnPrivTextMessage(CTextMessage &Message);
     CModule::EModRet OnChanTextMessage(CTextMessage &Message);
 
 protected:
