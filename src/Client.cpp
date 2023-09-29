@@ -145,6 +145,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 		Write(failure);
 		return;
 	} else if (Stanza.GetName().Equals("iq")) {
+		/* Non-SASL Authentication: https://xmpp.org/extensions/xep-0078.html */
 		CXMPPStanza iq("iq");
 		iq.SetAttribute("id", Stanza.GetAttribute("id"));
 
@@ -247,6 +248,37 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 			if (Stanza.GetChildByName("ping")) {
 				iq.SetAttribute("type", "result");
 			}
+
+			CXMPPStanza *pQuery = Stanza.GetChildByName("query");
+			if (pQuery) {
+				/* Service Discovery: https://xmpp.org/extensions/xep-0030.html */
+				if (pQuery->GetAttribute("xmlns").Equals("http://jabber.org/protocol/disco#items")
+						&& Stanza.GetAttribute("to").Equals(GetServerName())) {
+					iq.SetAttribute("type", "result");
+					CXMPPStanza& query = iq.NewChild("query", "http://jabber.org/protocol/disco#info");
+					Write(iq, &Stanza);
+					return;
+				}
+			}
+
+			CXMPPStanza *pVCard = Stanza.GetChildByName("vCard");
+			if (pVCard && pVCard->GetAttribute("xmlns").Equals("vcard-temp")) {
+				/* vcard-temp: https://xmpp.org/extensions/xep-0054.html */
+				if (!pVCard->HasAttribute("to")) {
+					/* Retrieving user's own vCard */
+
+					/* Item Not Found */
+					iq.SetAttribute("type", "error");
+					iq.NewChild("vCard", "vcard-temp");
+					CXMPPStanza &error = iq.NewChild("error");
+					error.SetAttribute("type", "cancel");
+					error.NewChild("item-not-found", "urn:ietf:params:xml:ns:xmpp-stanzas");
+					Write(iq, &Stanza);
+					return;
+				}
+			}
+
+
 		} else if (Stanza.GetAttribute("type").Equals("set")) {
 			CXMPPStanza *bindStanza = Stanza.GetChildByName("bind");
 
