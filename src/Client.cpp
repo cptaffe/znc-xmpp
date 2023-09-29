@@ -306,7 +306,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 							identity.SetAttribute("category", "conference");
 							identity.SetAttribute("name", channel->GetName() + " on " + network->GetName());
 							identity.SetAttribute("type", "text");
-							query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/muc");
+							query.NewChild("feature").SetAttribute("var", "gc-1.0");
 
 							Write(iq, &Stanza);
 							return;
