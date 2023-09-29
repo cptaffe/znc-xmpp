@@ -307,6 +307,12 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 							identity.SetAttribute("name", channel->GetName() + " on " + network->GetName());
 							identity.SetAttribute("type", "text");
 							query.NewChild("feature").SetAttribute("var", "gc-1.0");
+							query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/muc");
+							query.NewChild("feature").SetAttribute("var", "muc_nonanonymous");
+							query.NewChild("feature").SetAttribute("var", "muc_open");
+							query.NewChild("feature").SetAttribute("var", "muc_persistent");
+							query.NewChild("feature").SetAttribute("var", "muc_public");
+
 
 							Write(iq, &Stanza);
 							return;
