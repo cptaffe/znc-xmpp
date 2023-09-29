@@ -294,7 +294,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 							// Present each channel as a room
 							// JID grammar: https://xmpp.org/extensions/xep-0029.html#sect-idm45406366945648
 							CString jid = channel->GetName() + "!" + network->GetName() + "+irc@" + GetServerName();
-							CString name = "The " + channel->GetName() + " IRC channel on the " + network->GetName() + " network.";
+							CString name = channel->GetName() + " on " + network->GetName();
 
 							CXMPPStanza &item = query.NewChild("item");
 							item.SetAttribute("jid", jid);
@@ -407,7 +407,6 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					CIRCNetwork *network = m_pUser->FindNetwork(networkName);
 					if (network) {
 						CMessage message;
-						message.SetNick(network->GetIRCNick());
 						message.SetCommand("PRIVMSG");
 						message.SetParam(0, targetName);
 						message.SetParam(1, body);
