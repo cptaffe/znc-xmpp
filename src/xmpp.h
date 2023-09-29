@@ -31,6 +31,8 @@ public:
 
 	void SendStanza(CXMPPStanza &Stanza);
 
+    CModule::EModRet OnChanTextMessage(CTextMessage &Message);
+
 protected:
 	std::vector<CXMPPClient*> m_vClients;
 	CString m_sServerName;

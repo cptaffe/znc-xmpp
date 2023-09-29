@@ -6,6 +6,9 @@
  * by the Free Software Foundation.
  */
 
+#include <znc/IRCNetwork.h>
+#include <znc/Chan.h>
+
 #include "xmpp.h"
 #include "Client.h"
 #include "Listener.h"
@@ -120,6 +123,10 @@ void CXMPPModule::SendStanza(CXMPPStanza &Stanza) {
 		}
 	}
 
+	// TODO: Keep-alive so that the socket doesn't close
+	// TODO: Send messages addressed to IRC channels or users to those channels/users
+	// TODO: Proxy messages received on IRC
+
 	CXMPPJID from(Stanza.GetAttribute("from"));
 	if (from.IsLocal(*this)) {
 		CXMPPClient *pClient = Client(from);
@@ -144,6 +151,32 @@ void CXMPPModule::SendStanza(CXMPPStanza &Stanza) {
 			pClient->Write(errorStanza);
 		}
 	}
+}
+
+CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
+	CIRCNetwork *network = message.GetNetwork();
+	CChan *channel = message.GetChan();
+	CNick &nick = message.GetNick();
+
+	if (!network || !channel) {
+		return CModule::CONTINUE;
+	}
+
+	CXMPPStanza iq("message");
+	iq.SetAttribute("id", "znc_" + CString::RandomString(8));
+	iq.SetAttribute("type", "groupchat");
+	iq.SetAttribute("from", nick.GetNick() + "!" + network->GetName() + "+irc@" + GetServerName());
+	iq.SetAttribute("to", channel->GetName() + "!" + network->GetName() + "+irc@" + GetServerName());
+	CXMPPStanza &body = iq.NewChild("body");
+	body.NewChild().SetText(message.GetText());
+
+	for (std::vector<CXMPPClient*>::const_iterator it = m_vClients.begin(); it != m_vClients.end(); ++it) {
+		CXMPPClient *client = *it;
+
+		client->Write(iq);
+	}
+
+	return CModule::CONTINUE;
 }
 
 GLOBALMODULEDEFS(CXMPPModule, "XMPP support for ZNC");
