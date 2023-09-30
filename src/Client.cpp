@@ -617,22 +617,39 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					Write(presence, &Stanza);
 
 					// Room history
-					const CBuffer &buffer = channel->GetBuffer();
-					for (size_t i = 0; i < buffer.Size(); i++) {
-						const CXMPPBufLine &line = CXMPPBufLine(buffer.GetBufLine(i));
-						const CMessage &msg = line.GetMessage();
-						if (msg.GetCommand().Equals("PRIVMSG")) {
+					int maxStanzas = 25;
+					CXMPPStanza *pHistory = pX->GetChildByName("history");
+					if (pHistory && pHistory->HasAttribute("maxstanzas")) {
+						maxStanzas = pHistory->GetAttribute("maxstanzas").ToInt();
+					}
 
-							CXMPPJID from(to.GetUser(), to.GetDomain(), msg.GetNick().GetNick());
-							CXMPPJID channelJID(to.GetUser(), GetServerName());
-							CXMPPStanza message("message");
-							message.SetAttribute("id", "znc_" + CString::RandomString(8));
-							message.SetAttribute("from", from.ToString());
-							message.SetAttribute("type", "groupchat");
-							message.NewChild("body").NewChild().SetText(line.GetText());
-							AddDelay(message, channelJID.ToString(), msg.GetTime());
-							Write(message, &Stanza);
-						}
+					// Traverse back through time, finding messages
+					const CBuffer &buffer = channel->GetBuffer();
+					std::deque<CXMPPBufLine> history;
+					for (size_t i = buffer.Size()-1; i >= 0; i--) {
+						const CXMPPBufLine &line = CXMPPBufLine(buffer.GetBufLine(i));
+						if (!line.GetCommand().Equals("PRIVMSG"))
+							continue;
+
+						history.push_front(line);
+						if (history.size() == maxStanzas)
+							break;
+					}
+
+					// Traverse forward through time, writing messages
+					for (std::deque<CXMPPBufLine>::const_iterator iter = history.begin(); iter != history.end(); ++iter) {
+						const CXMPPBufLine &line = *iter;
+						const CMessage &msg = line.GetMessage();
+
+						CXMPPJID from(to.GetUser(), to.GetDomain(), msg.GetNick().GetNick());
+						CXMPPJID channelJID(to.GetUser(), GetServerName());
+						CXMPPStanza message("message");
+						message.SetAttribute("id", "znc_" + CString::RandomString(8));
+						message.SetAttribute("from", from.ToString());
+						message.SetAttribute("type", "groupchat");
+						message.NewChild("body").NewChild().SetText(line.GetText());
+						AddDelay(message, channelJID.ToString(), msg.GetTime());
+						Write(message, &Stanza);
 					}
 
 					// Room subject
