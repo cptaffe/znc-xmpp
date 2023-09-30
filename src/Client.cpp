@@ -420,8 +420,23 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 
 		} else if (Stanza.GetAttribute("type").Equals("set")) {
-			CXMPPStanza *bindStanza = Stanza.GetChildByName("bind");
+			CXMPPStanza *pVCard = Stanza.GetChildByName("vCard", "vcard-temp");
+			if (pVCard) {
+				/* vcard-temp: https://xmpp.org/extensions/xep-0054.html */
+				if (!pVCard->HasAttribute("to")) {
+					/* Updating user's own vCard */
+					iq.SetAttribute("type", "result");
+					// TODO: Store vCard
+					Write(iq, &Stanza);
+					return;
+				}
 
+				/* Not Allowed */
+				Error("not-allowed", "cancel", "405", &Stanza);
+				return;
+			}
+
+			CXMPPStanza *bindStanza = Stanza.GetChildByName("bind");
 			if (bindStanza) {
 				bool bResource = false;
 				CString sResource;
