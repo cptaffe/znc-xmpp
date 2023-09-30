@@ -460,6 +460,19 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						network->PutIRC(message);
 						network->PutUser(message);
 
+						if (Stanza.GetAttribute("type").Equals("groupchat")) {
+							CXMPPStanza message("message");
+							message.SetAttribute("type", "groupchat");
+							CString nick = m_sChannels[to.GetUser()];
+							if (!nick.empty()) {
+								message.SetAttribute("from", nick);
+							}
+							message.SetAttribute("to", to.ToString());
+							message.NewChild("body").NewChild().SetText(body);
+
+							Write(message, &Stanza);
+						}
+
 						return;
 					}
 				}
