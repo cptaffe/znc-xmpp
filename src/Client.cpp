@@ -180,7 +180,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 			} else if (Stanza.GetAttribute("type").Equals("set")) {
 				CXMPPStanza *pUsername = pQuery->GetChildByName("username");
 				CXMPPStanza *pPassword = pQuery->GetChildByName("password");
-				CXMPPStanza *pResource = pQuery->GetChildByName("password");
+				CXMPPStanza *pResource = pQuery->GetChildByName("resource");
 
 				if (pUsername && pPassword) {
 					pUsername = pUsername->GetTextChild();
