@@ -309,6 +309,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						identity.SetAttribute("name", "XMPP Gateway ZNC Module");
 						identity.SetAttribute("type", "text");
 						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/muc");
+						query.NewChild("feature").SetAttribute("var", "vcard-temp");
 
 						Write(iq, &Stanza);
 						return;
@@ -317,7 +318,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					if (to.IsLocal(*GetModule()) && to.IsIRCChannel()) {
 						CIRCNetwork *network = m_pUser->FindNetwork(to.GetIRCNetwork());
 						if (network) {
-							CChan *channel = network->FindChan(to.GetIRCTarget());
+							CChan *channel = network->FindChan(to.GetIRCChannel());
 							if (channel) {
 								iq.SetAttribute("type", "result");
 								CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#info");
@@ -365,8 +366,8 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 				}
 			}
 
-			CXMPPStanza *pVCard = Stanza.GetChildByName("vCard");
-			if (pVCard && pVCard->GetAttribute("xmlns").Equals("vcard-temp")) {
+			CXMPPStanza *pVCard = Stanza.GetChildByName("vCard", "vcard-temp");
+			if (pVCard) {
 				/* vcard-temp: https://xmpp.org/extensions/xep-0054.html */
 				if (!pVCard->HasAttribute("to")) {
 					/* Retrieving user's own vCard */
@@ -377,6 +378,22 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					vCard.NewChild("FN").NewChild().SetText(m_pUser->GetRealName());
 
 					Write(iq, &Stanza);
+					return;
+				} else {
+					// Another user's vCard
+					CXMPPJID to(pVCard->GetAttribute("to"));
+					if (to.IsIRCUser()) {
+						iq.SetAttribute("type", "result");
+						CXMPPStanza &vCard = iq.NewChild("vCard", "vcard-temp");
+						vCard.NewChild("NICKNAME").NewChild().SetText(to.GetIRCUser());
+						vCard.NewChild("FN").NewChild().SetText(to.GetIRCUser() + " on " + to.GetIRCNetwork());
+
+						Write(iq, &Stanza);
+						return;
+					}
+
+					/* Item Not Found */
+					Error("item-not-found", "cancel", "404", &Stanza);
 					return;
 				}
 			}
@@ -444,7 +461,11 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 		// IRC interface
 		if (to.IsIRC()) {
-			CString targetName = to.GetIRCTarget();
+			CString targetName;
+			if (to.IsIRCUser())
+				targetName = to.GetIRCUser();
+			else
+				targetName = to.GetIRCChannel();
 			CString networkName = to.GetIRCNetwork();
 
 			CXMPPStanza *pBody = Stanza.GetChildByName("body");
@@ -535,7 +556,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						return;
 					}
 
-					CChan *channel = network->FindChan(to.GetIRCTarget());
+					CChan *channel = network->FindChan(to.GetIRCChannel());
 					if (!channel) {
 						Error("item-not-found", "cancel", "404", &Stanza);
 						return;

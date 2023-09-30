@@ -49,10 +49,20 @@ bool CXMPPJID::IsIRCChannel() const {
 }
 
 bool CXMPPJID::IsIRCUser() const {
-	return IsIRC() && !IsIRCChannel();
+	return IsIRC() && !(IsIRCChannel() && m_sResource.empty());
 }
 
-CString CXMPPJID::GetIRCTarget() const {
+CString CXMPPJID::GetIRCChannel() const {
+	if (!IsIRCChannel())
+		return "";
+	return m_sUser.Token(0, false, "!");
+}
+
+CString CXMPPJID::GetIRCUser() const {
+	if (!IsIRCUser())
+		return "";
+	if (IsIRCChannel())
+		return m_sResource;
 	return m_sUser.Token(0, false, "!");
 }
 

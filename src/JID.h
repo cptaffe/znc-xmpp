@@ -33,7 +33,8 @@ public:
 	bool IsIRC() const;
 	bool IsIRCChannel() const;
 	bool IsIRCUser() const;
-	CString GetIRCTarget() const;
+	CString GetIRCChannel() const;
+	CString GetIRCUser() const;
 	CString GetIRCNetwork() const;
 
 protected:
