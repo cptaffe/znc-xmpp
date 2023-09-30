@@ -167,7 +167,7 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 	CXMPPStanza iq("message");
 	iq.SetAttribute("id", "znc_" + CString::RandomString(8));
 	iq.SetAttribute("type", "groupchat");
-	if (nick.GetNick() != network->GetIRCNick().GetNick()) {
+	if (!nick.GetNick().Equals(network->GetCurNick())) {
 		iq.SetAttribute("from", channelJID + "/" + nick.GetNick());
 	}
 	iq.SetAttribute("to", channelJID);
@@ -207,7 +207,9 @@ CModule::EModRet CXMPPModule::OnPrivTextMessage(CTextMessage& message) {
 	CXMPPStanza iq("message");
 	iq.SetAttribute("id", "znc_" + CString::RandomString(8));
 	iq.SetAttribute("type", "chat");
-	iq.SetAttribute("from", nick.GetNick() + "!" + network->GetName() + "+irc@" + GetServerName());
+	if (!nick.GetNick().Equals(network->GetCurNick())) {
+		iq.SetAttribute("from", nick.GetNick() + "!" + network->GetName() + "+irc@" + GetServerName());
+	}
 	CXMPPStanza &body = iq.NewChild("body");
 	body.NewChild().SetText(message.GetText());
 
@@ -216,6 +218,9 @@ CModule::EModRet CXMPPModule::OnPrivTextMessage(CTextMessage& message) {
 		if (!client->GetUser())
 			continue; // unauthenticated
 
+		if (!iq.HasAttribute("from")) {
+			iq.SetAttribute("from", client->GetJID());
+		}
 		iq.SetAttribute("to", client->GetJID());
 		client->Write(iq);
 	}
