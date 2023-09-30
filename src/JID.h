@@ -16,6 +16,7 @@ class CXMPPModule;
 class CXMPPJID {
 public:
 	CXMPPJID(CString sJID);
+	CXMPPJID(CString user, CString domain, CString resource="");
 	CString ToString() const;
 
 	const CString& GetUser() const { return m_sUser; }

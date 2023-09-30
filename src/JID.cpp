@@ -16,6 +16,12 @@ CXMPPJID::CXMPPJID(CString sJID) {
 	m_sDomain = sDomain.Token(0, false, "/");
 }
 
+CXMPPJID::CXMPPJID(CString user, CString domain, CString resource) {
+	m_sUser = user;
+	m_sDomain = domain;
+	m_sResource = resource;
+}
+
 CString CXMPPJID::ToString() const {
 	CString sResult;
 

@@ -568,6 +568,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 						CXMPPJID from = to;
 						from.SetResource(nick.GetNick());
+						CXMPPJID jid(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
 
 						CXMPPStanza presence("presence");
 						presence.SetAttribute("id", "znc_" + CString::RandomString(8));
@@ -576,6 +577,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						CXMPPStanza &x = presence.NewChild("x", "http://jabber.org/protocol/muc#user");
 						CXMPPStanza &item = x.NewChild("item");
 						// TODO: check permissions
+						item.SetAttribute("jid", jid.ToString());
 						item.SetAttribute("affiliation", "member");
 						item.SetAttribute("role", "participant");
 
@@ -589,6 +591,8 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					CXMPPStanza &item = x.NewChild("item");
 					item.SetAttribute("affiliation", "member");
 					item.SetAttribute("role", "participant");
+					presence.NewChild("status").SetAttribute("code", "100"); // non-anonymous
+					presence.NewChild("status").SetAttribute("code", "110"); // self-status
 
 					m_sChannels.emplace(to.GetUser(), to.ToString());
 				}
