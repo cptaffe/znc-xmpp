@@ -167,7 +167,9 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 	CXMPPStanza iq("message");
 	iq.SetAttribute("id", "znc_" + CString::RandomString(8));
 	iq.SetAttribute("type", "groupchat");
-	iq.SetAttribute("from", channelJID + "/" + nick.GetNick());
+	if (nick.GetNick() != network->GetNick()) {
+		iq.SetAttribute("from", channelJID + "/" + nick.GetNick());
+	}
 	iq.SetAttribute("to", channelJID);
 	CXMPPStanza &body = iq.NewChild("body");
 	body.NewChild().SetText(message.GetText());
@@ -181,13 +183,18 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 		std::vector<CString> channels = client->GetChannels();
 		bool isListening = false;
 		for (std::vector<CString>::const_iterator iter = channels.begin(); iter != channels.end(); ++iter) {
-			if (iter->Equals(channel->GetName() + "!" + network->GetName())) {
+			if (iter->Equals(channel->GetName() + "!" + network->GetName() + "+irc")) {
 				isListening = true;
 				break;
 			}
 		}
 		if (!isListening)
 			continue;
+
+		// self messages
+		if (!iq.HasAttribute("from")) {
+			iq.SetAttribute("from", client->GetJID());
+		}
 
 		client->Write(iq);
 	}

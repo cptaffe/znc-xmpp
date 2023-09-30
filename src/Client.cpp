@@ -459,6 +459,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 						network->PutIRC(message);
 						network->PutUser(message);
+
 						return;
 					}
 				}
