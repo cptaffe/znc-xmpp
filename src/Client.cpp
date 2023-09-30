@@ -8,11 +8,18 @@
 
 #include <znc/IRCNetwork.h>
 #include <znc/Chan.h>
+#include <znc/Utils.h>
 
 #include "Client.h"
 #include "xmpp.h"
 
 #define SUPPORT_RFC_3921
+
+class CXMPPBufLine : public CBufLine {
+public:
+	CXMPPBufLine(const CBufLine &line) : CBufLine(line) {}
+	CMessage GetMessage() const { return m_Message; }
+};
 
 CXMPPClient::CXMPPClient(CModule *pModule) : CXMPPSocket(pModule) {
 	m_pUser = NULL;
@@ -585,6 +592,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					}
 
 					// User's own presence
+					CXMPPStanza presence("presence");
 					presence.SetAttribute("from", to.ToString());
 					presence.NewChild("x", "vcard-temp:x:update");
 					CXMPPStanza &x = presence.NewChild("x", "http://jabber.org/protocol/muc#user");
@@ -593,8 +601,44 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					item.SetAttribute("role", "participant");
 					presence.NewChild("status").SetAttribute("code", "100"); // non-anonymous
 					presence.NewChild("status").SetAttribute("code", "110"); // self-status
+					Write(presence, &Stanza);
+
+					// Room history
+					const CBuffer &buffer = channel->GetBuffer();
+					for (size_t i = 0; i < buffer.Size(); i++) {
+						const CXMPPBufLine &line = CXMPPBufLine(buffer.GetBufLine(i));
+						const CMessage &msg = line.GetMessage();
+						if (msg.GetCommand().Equals("PRIVMSG")) {
+
+							CXMPPJID from(to.GetUser(), to.GetDomain(), msg.GetNick().GetNick());
+							CXMPPJID channelJID(to.GetUser(), GetServerName());
+							CXMPPStanza message("message");
+							message.SetAttribute("id", "znc_" + CString::RandomString(8));
+							message.SetAttribute("from", from.ToString());
+							message.SetAttribute("type", "groupchat");
+							message.NewChild("body").NewChild().SetText(line.GetText());
+							CXMPPStanza &delay = message.NewChild("delay", "urn:xmpp:delay");
+							delay.SetAttribute("from", channelJID.ToString());
+							delay.SetAttribute("stamp", CUtils::FormatServerTime(msg.GetTime()));
+							Write(message, &Stanza);
+						}
+					}
+
+					// Room subject
+					CXMPPJID owner(to.GetUser(), to.GetDomain(), CNick(channel->GetTopicOwner()).GetNick());
+					CXMPPJID channelJID(to.GetUser(), GetServerName());
+					CXMPPStanza message("message");
+					message.SetAttribute("id", "znc_" + CString::RandomString(8));
+					message.SetAttribute("from", owner.ToString());
+					message.SetAttribute("type", "groupchat");
+					message.NewChild("subject").NewChild().SetText(channel->GetTopic());
+					CXMPPStanza &delay = message.NewChild("delay", "urn:xmpp:delay");
+					delay.SetAttribute("from", channelJID.ToString());
+					delay.SetAttribute("stamp", CUtils::FormatServerTime(timeval{.tv_sec = (time_t)channel->GetTopicDate()}));
+					Write(message, &Stanza);
 
 					m_sChannels.emplace(to.GetUser(), to.ToString());
+					return;
 				}
 			}
 		} else if (Stanza.GetAttribute("type").Equals("unavailable")) {
