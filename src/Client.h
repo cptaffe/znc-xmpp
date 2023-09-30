@@ -23,6 +23,7 @@ public:
 	CString GetResource() const { return m_sResource; }
 	int GetPriority() const { return m_uiPriority; }
 	CString GetJID() const;
+	std::vector<CString> GetChannels() const { return m_sChannels; };
 
 	bool Write(CString sData);
 	bool Write(const CXMPPStanza& Stanza);
@@ -38,5 +39,6 @@ protected:
 
 	CString m_sResource;
 	int m_uiPriority;
+	std::vector<CString> m_sChannels;
 };
 

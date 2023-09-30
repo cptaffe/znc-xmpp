@@ -177,6 +177,18 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 		if (!client->GetUser())
 			continue; // unauthenticated
 
+		// Check that this client is in the channel
+		std::vector<CString> channels = client->GetChannels();
+		bool isListening = false;
+		for (std::vector<CString>::const_iterator iter = channels.begin(); iter != channels.end(); ++iter) {
+			if (iter->Equals(channel->GetName() + "!" + network->GetName())) {
+				isListening = true;
+				break;
+			}
+		}
+		if (!isListening)
+			continue;
+
 		client->Write(iq);
 	}
 
