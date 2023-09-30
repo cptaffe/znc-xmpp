@@ -117,6 +117,19 @@ void CXMPPClient::StreamStart(CXMPPStanza &Stanza) {
 	Write(features);
 }
 
+void AddDelay(CXMPPStanza &in, CString from, timeval t) {
+	CXMPPStanza &delay = in.NewChild("delay", "urn:xmpp:delay");
+	delay.SetAttribute("from", from);
+	delay.SetAttribute("stamp", CUtils::FormatTime(t, "%Y-%m-%dT%H:%M:%SZ", "UTC"));
+	CXMPPStanza &x = in.NewChild("x", "jabber:x:delay");
+	x.SetAttribute("from", from);
+	x.SetAttribute("stamp", CUtils::FormatTime(t, "%Y%m%dT%H:%M:%S", "UTC"));
+}
+
+void AddDelay(CXMPPStanza &in, CString from, time_t t) {
+	AddDelay(in, from, timeval{.tv_sec = t});
+}
+
 void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 	if (Stanza.GetName().Equals("auth")) {
 		if (Stanza.GetAttribute("mechanism").Equals("plain")) {
@@ -617,9 +630,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 							message.SetAttribute("from", from.ToString());
 							message.SetAttribute("type", "groupchat");
 							message.NewChild("body").NewChild().SetText(line.GetText());
-							CXMPPStanza &delay = message.NewChild("delay", "urn:xmpp:delay");
-							delay.SetAttribute("from", channelJID.ToString());
-							delay.SetAttribute("stamp", CUtils::FormatServerTime(msg.GetTime()));
+							AddDelay(message, channelJID.ToString(), msg.GetTime());
 							Write(message, &Stanza);
 						}
 					}
@@ -632,9 +643,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					message.SetAttribute("from", owner.ToString());
 					message.SetAttribute("type", "groupchat");
 					message.NewChild("subject").NewChild().SetText(channel->GetTopic());
-					CXMPPStanza &delay = message.NewChild("delay", "urn:xmpp:delay");
-					delay.SetAttribute("from", channelJID.ToString());
-					delay.SetAttribute("stamp", CUtils::FormatServerTime(timeval{.tv_sec = (time_t)channel->GetTopicDate()}));
+					AddDelay(message, channelJID.ToString(), (time_t)channel->GetTopicDate());
 					Write(message, &Stanza);
 
 					m_sChannels.emplace(to.GetUser(), to.ToString());
@@ -653,4 +662,3 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 	DEBUG("XMPPClient unsupported stanza [" << Stanza.GetName() << "]");
 }
-
