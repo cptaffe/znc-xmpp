@@ -22,7 +22,12 @@ public:
 	const CString& GetDomain() const { return m_sDomain; }
 	const CString& GetResource() const { return m_sResource; }
 
+	void SetUser(CString user) { m_sUser = user; };
+	void SetDomain(CString domain) { m_sDomain = domain; };
+	void SetResource(CString resource) { m_sResource = resource; };
+
 	bool IsLocal(const CXMPPModule &Module) const;
+	bool IsBlank() const;
 
 	// IRC bridge
 	bool IsIRC() const;

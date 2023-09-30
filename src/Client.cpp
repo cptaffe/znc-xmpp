@@ -49,11 +49,10 @@ bool CXMPPClient::Write(const CXMPPStanza& Stanza) {
 }
 
 bool CXMPPClient::Write(CXMPPStanza &Stanza, const CXMPPStanza *pStanza) {
-	if (m_pUser) {
+	if (!Stanza.HasAttribute("to") && m_pUser) {
 		Stanza.SetAttribute("to", GetJID());
 	}
-
-	if (pStanza && pStanza->HasAttribute("id")) {
+	if (!Stanza.HasAttribute("id") && pStanza && pStanza->HasAttribute("id")) {
 		Stanza.SetAttribute("id", pStanza->GetAttribute("id"));
 	}
 	return Write(Stanza.ToString());
@@ -472,20 +471,85 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 		CXMPPStanza presence("presence");
 
 		if (!Stanza.HasAttribute("type")) {
-			CXMPPStanza *pPriority = Stanza.GetChildByName("priority");
+			if (!Stanza.HasAttribute("to")) {
+				CXMPPStanza *pPriority = Stanza.GetChildByName("priority");
 
-			if (pPriority) {
-				CXMPPStanza *pPriorityText = pPriority->GetTextChild();
-				if (pPriorityText) {
-					int priority = pPriorityText->GetText().ToInt();
+				if (pPriority) {
+					CXMPPStanza *pPriorityText = pPriority->GetTextChild();
+					if (pPriorityText) {
+						int priority = pPriorityText->GetText().ToInt();
 
-					if ((priority >= -128) && (priority <= 127)) {
-						m_uiPriority = priority;
+						if ((priority >= -128) && (priority <= 127)) {
+							m_uiPriority = priority;
+						}
 					}
+
+					CXMPPStanza& priority = presence.NewChild("priority");
+					priority.NewChild().SetText(CString(GetPriority()));
+				}
+			} else {
+				// channel join
+				CXMPPJID to(Stanza.GetAttribute("to"));
+
+				if (!to.IsLocal(*GetModule())) {
+					return; // ignore
+				}
+				if (to.GetResource().empty()) {
+					Error("jid-malformed", "modify", "400", &Stanza);
+					return;
 				}
 
-				CXMPPStanza& priority = presence.NewChild("priority");
-				priority.NewChild().SetText(CString(GetPriority()));
+				CXMPPStanza *pX = Stanza.GetChildByName("x");
+				if (pX && pX->GetAttribute("xmlns").Equals("http://jabber.org/protocol/muc")) {
+					// TODO: Broadcast to any other XMPP clients in this room
+
+					if (to.IsIRCChannel()) {
+						Error("jid-malformed", "modify", "400", &Stanza);
+						return;
+					}
+
+					CIRCNetwork *network = m_pUser->FindNetwork(to.GetIRCNetwork());
+					if (!network) {
+						Error("item-not-found", "cancel", "404", &Stanza);
+						return;
+					}
+
+					CChan *channel = network->FindChan(to.GetIRCTarget());
+					if (!channel) {
+						Error("item-not-found", "cancel", "404", &Stanza);
+						return;
+					}
+
+					std::map<CString, CNick> nicks = channel->GetNicks();
+					for (std::map<CString, CNick>::const_iterator iter = nicks.begin(); iter != nicks.end(); ++iter) {
+						const CNick &nick = iter->second;
+
+						CXMPPJID from = to;
+						from.SetResource(nick.GetNick());
+
+						CXMPPStanza presence("presence");
+						presence.SetAttribute("id", "znc_" + CString::RandomString(8));
+						presence.SetAttribute("from", from.ToString());
+						CXMPPStanza &x = presence.NewChild("x", "http://jabber.org/protocol/muc#user");
+						CXMPPStanza &item = x.NewChild("item");
+						// TODO: check permissions
+						item.SetAttribute("affiliation", "member");
+						item.SetAttribute("role", "participant");
+
+						Write(presence, &Stanza);
+					}
+
+					// User's own presence
+					presence.SetAttribute("from", to.ToString());
+					CXMPPStanza &x = presence.NewChild("x", "http://jabber.org/protocol/muc#user");
+					CXMPPStanza &item = x.NewChild("item");
+					item.SetAttribute("affiliation", "member");
+					item.SetAttribute("role", "participant");
+
+					Write(presence, &Stanza);
+
+					return;
+				}
 			}
 		} else if (Stanza.GetAttribute("type").Equals("unavailable")) {
 			presence.NewChild("unavailable");

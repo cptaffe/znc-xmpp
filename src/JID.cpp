@@ -36,6 +36,10 @@ bool CXMPPJID::IsLocal(const CXMPPModule &Module) const {
 	return m_sDomain.Equals(Module.GetServerName());
 }
 
+bool CXMPPJID::IsBlank() const {
+	return m_sUser.empty() && m_sDomain.empty() && m_sResource.empty();
+}
+
 bool CXMPPJID::IsIRC() const {
 	return m_sUser.EndsWith("+irc");
 }
