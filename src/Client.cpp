@@ -503,7 +503,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 				if (pX && pX->GetAttribute("xmlns").Equals("http://jabber.org/protocol/muc")) {
 					// TODO: Broadcast to any other XMPP clients in this room
 
-					if (to.IsIRCChannel()) {
+					if (!to.IsIRCChannel()) {
 						Error("jid-malformed", "modify", "400", &Stanza);
 						return;
 					}
