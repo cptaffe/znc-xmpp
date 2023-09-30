@@ -176,8 +176,9 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 
 	for (std::vector<CXMPPClient*>::const_iterator it = m_vClients.begin(); it != m_vClients.end(); ++it) {
 		CXMPPClient *client = *it;
-		if (!client->GetUser())
-			continue; // unauthenticated
+		CUser *user = client->GetUser();
+		if (!user || !user->GetUsername().Equals(network->GetUser()->GetUsername()))
+			continue;
 
 		// Check that this client is in the channel
 		CString jid = client->GetChannels()[channel->GetName() + "!" + network->GetName() + "+irc"];
@@ -215,8 +216,10 @@ CModule::EModRet CXMPPModule::OnPrivTextMessage(CTextMessage& message) {
 
 	for (std::vector<CXMPPClient*>::const_iterator it = m_vClients.begin(); it != m_vClients.end(); ++it) {
 		CXMPPClient *client = *it;
-		if (!client->GetUser())
-			continue; // unauthenticated
+		CUser *user = client->GetUser();
+		// TODO: Are user pointers comparable?
+		if (!user || !user->GetUsername().Equals(network->GetUser()->GetUsername()))
+			continue;
 
 		if (!iq.HasAttribute("from")) {
 			iq.SetAttribute("from", client->GetJID());
