@@ -168,6 +168,19 @@ CXMPPStanza* CXMPPStanza::GetChildByName(CString sName) const {
 	return NULL;
 }
 
+CXMPPStanza* CXMPPStanza::GetChildByName(CString sName, CString sNamespace) const {
+	std::vector<CXMPPStanza*>::const_iterator it;
+	for (it = m_vChildren.begin(); it != m_vChildren.end(); ++it) {
+		CXMPPStanza *pChild = *it;
+
+		if (pChild->GetName().Equals(sName) && pChild->GetAttribute("xmlns").Equals(sNamespace)) {
+			return pChild;
+		}
+	}
+
+	return NULL;
+}
+
 CXMPPStanza* CXMPPStanza::GetTextChild() const {
 	std::vector<CXMPPStanza*>::const_iterator it;
 	for (it = m_vChildren.begin(); it != m_vChildren.end(); ++it) {

@@ -44,6 +44,7 @@ public:
 
 	/* Get the first child of stanza with name. */
 	CXMPPStanza* GetChildByName(CString sName) const;
+	CXMPPStanza* GetChildByName(CString sName, CString sNamespace) const;
 	CXMPPStanza* GetTextChild() const;
 
 	CString GetAttribute(CString sName) const;
@@ -60,7 +61,7 @@ protected:
 	CString m_sData;
 	CXMPPStanza *m_pParent;
 	MCString m_msAttributes;
-	
+
 	std::vector<CXMPPStanza*> m_vChildren;
 };
 

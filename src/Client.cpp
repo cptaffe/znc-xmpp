@@ -371,8 +371,12 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 				if (!pVCard->HasAttribute("to")) {
 					/* Retrieving user's own vCard */
 
-					/* Item Not Found */
-					Error("item-not-found", "cancel", "404", &Stanza);
+					iq.SetAttribute("type", "result");
+					CXMPPStanza &vCard = iq.NewChild("vCard", "vcard-temp");
+					vCard.NewChild("NICKNAME").NewChild().SetText(m_pUser->GetNick());
+					vCard.NewChild("FN").NewChild().SetText(m_pUser->GetRealName());
+
+					Write(iq, &Stanza);
 					return;
 				}
 			}
@@ -487,7 +491,6 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 		if (!Stanza.HasAttribute("type")) {
 			if (!Stanza.HasAttribute("to")) {
 				CXMPPStanza *pPriority = Stanza.GetChildByName("priority");
-
 				if (pPriority) {
 					CXMPPStanza *pPriorityText = pPriority->GetTextChild();
 					if (pPriorityText) {
@@ -501,6 +504,10 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					CXMPPStanza& priority = presence.NewChild("priority");
 					priority.NewChild().SetText(CString(GetPriority()));
 				}
+				CXMPPStanza *pXVCard = Stanza.GetChildByName("x", "vcard-temp:x:update");
+				if (pXVCard) {
+					presence.NewChild("x", "vcard-temp:x:update");
+				}
 			} else {
 				// channel join
 				CXMPPJID to(Stanza.GetAttribute("to"));
@@ -513,8 +520,8 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					return;
 				}
 
-				CXMPPStanza *pX = Stanza.GetChildByName("x");
-				if (pX && pX->GetAttribute("xmlns").Equals("http://jabber.org/protocol/muc")) {
+				CXMPPStanza *pX = Stanza.GetChildByName("x", "http://jabber.org/protocol/muc");
+				if (pX ) {
 					// TODO: Broadcast to any other XMPP clients in this room
 
 					if (!to.IsIRCChannel()) {
@@ -544,6 +551,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						CXMPPStanza presence("presence");
 						presence.SetAttribute("id", "znc_" + CString::RandomString(8));
 						presence.SetAttribute("from", from.ToString());
+						presence.NewChild("x", "vcard-temp:x:update");
 						CXMPPStanza &x = presence.NewChild("x", "http://jabber.org/protocol/muc#user");
 						CXMPPStanza &item = x.NewChild("item");
 						// TODO: check permissions
@@ -555,15 +563,13 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 					// User's own presence
 					presence.SetAttribute("from", to.ToString());
+					presence.NewChild("x", "vcard-temp:x:update");
 					CXMPPStanza &x = presence.NewChild("x", "http://jabber.org/protocol/muc#user");
 					CXMPPStanza &item = x.NewChild("item");
 					item.SetAttribute("affiliation", "member");
 					item.SetAttribute("role", "participant");
 
-					Write(presence, &Stanza);
-
 					m_sChannels.emplace(to.GetUser(), to.ToString());
-					return;
 				}
 			}
 		} else if (Stanza.GetAttribute("type").Equals("unavailable")) {
