@@ -167,7 +167,7 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 	CXMPPStanza iq("message");
 	iq.SetAttribute("id", "znc_" + CString::RandomString(8));
 	iq.SetAttribute("type", "groupchat");
-	if (nick.GetNick() != network->GetNick()) {
+	if (nick.GetNick() != network->GetIRCNick().GetNick()) {
 		iq.SetAttribute("from", channelJID + "/" + nick.GetNick());
 	}
 	iq.SetAttribute("to", channelJID);
@@ -180,20 +180,13 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 			continue; // unauthenticated
 
 		// Check that this client is in the channel
-		std::vector<CString> channels = client->GetChannels();
-		bool isListening = false;
-		for (std::vector<CString>::const_iterator iter = channels.begin(); iter != channels.end(); ++iter) {
-			if (iter->Equals(channel->GetName() + "!" + network->GetName() + "+irc")) {
-				isListening = true;
-				break;
-			}
-		}
-		if (!isListening)
+		CString jid = client->GetChannels()[channel->GetName() + "!" + network->GetName() + "+irc"];
+		if (jid.empty())
 			continue;
 
 		// self messages
 		if (!iq.HasAttribute("from")) {
-			iq.SetAttribute("from", client->GetJID());
+			iq.SetAttribute("from", jid);
 		}
 
 		client->Write(iq);

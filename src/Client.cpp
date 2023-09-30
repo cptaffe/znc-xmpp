@@ -549,7 +549,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 					Write(presence, &Stanza);
 
-					m_sChannels.push_back(to.GetUser());
+					m_sChannels.emplace(to.GetUser(), to.ToString());
 					return;
 				}
 			}
