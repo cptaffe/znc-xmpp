@@ -14,6 +14,25 @@
 #include "Listener.h"
 #include "Stanza.h"
 
+// Keep the socket alive
+class CXMPPSpaceJob : public CTimer {
+public:
+	CXMPPSpaceJob(CModule* pModule, unsigned int uInterval, unsigned int uCycles, const CString& sLabel, const CString& sDescription)
+		: CTimer(pModule, uInterval, uCycles, sLabel, sDescription) {}
+	virtual ~CXMPPSpaceJob() {}
+protected:
+	virtual void RunJob() {
+		CXMPPModule *module = (CXMPPModule *)m_pModule;
+		std::vector<CXMPPClient *> &clients = module->GetClients();
+
+		// TODO: Ensure this doesn't corrupt the stream
+		for (std::vector<CXMPPClient *>::const_iterator iter = clients.begin(); iter != clients.end(); ++iter) {
+			CXMPPClient *client = *iter;
+			client->Write(" ");
+		}
+	}
+};
+
 bool CXMPPModule::OnLoad(const CString& sArgs, CString& sMessage) {
 	m_sServerName = sArgs.Token(0);
 	if (m_sServerName.empty()) {
@@ -22,6 +41,8 @@ bool CXMPPModule::OnLoad(const CString& sArgs, CString& sMessage) {
 
 	CXMPPListener *pClient = new CXMPPListener(this);
 	pClient->Listen(5222, false);
+
+	AddTimer(new CXMPPSpaceJob(this, 30, 0, "CXMPPSpace", "Periodically sends a space on the socket to prevent closing"));
 
 	return true;
 }
