@@ -78,7 +78,7 @@ void CXMPPClient::Error(CString tag, CString type, CString code, const CXMPPStan
 	Write(iq, pStanza);
 }
 
-void CXMPPClient::ChannelPresence(const CXMPPJID &from, const CXMPPJID &jid, const CString &type, const CString &status, const std::vector<CString> &codes,  const CXMPPStanza *pStanza) {
+void CXMPPClient::Presence(const CXMPPJID &from, const CString &type, const CString &status,  const CXMPPStanza *pStanza) {
 	CXMPPStanza presence("presence");
 	presence.SetAttribute("id", "znc_" + CString::RandomString(8));
 	presence.SetAttribute("from", from.ToString());
@@ -87,6 +87,18 @@ void CXMPPClient::ChannelPresence(const CXMPPJID &from, const CXMPPJID &jid, con
 	if (!status.empty())
 		presence.NewChild("status").NewChild().SetText(status);
 	presence.NewChild("x", "vcard-temp:x:update").NewChild("photo");
+
+	Write(presence, pStanza);
+}
+
+void CXMPPClient::ChannelPresence(const CXMPPJID &from, const CXMPPJID &jid, const CString &type, const CString &status, const std::vector<CString> &codes,  const CXMPPStanza *pStanza) {
+	CXMPPStanza presence("presence");
+	presence.SetAttribute("id", "znc_" + CString::RandomString(8));
+	presence.SetAttribute("from", from.ToString());
+	if (!type.empty())
+		presence.SetAttribute("type", type);
+	if (!status.empty())
+		presence.NewChild("status").NewChild().SetText(status);
 	CXMPPStanza &x = presence.NewChild("x", "http://jabber.org/protocol/muc#user");
 	CXMPPStanza &item = x.NewChild("item");
 	// TODO: check permissions
@@ -688,6 +700,15 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					Write(message, &Stanza);
 
 					m_sChannels.emplace(to.GetUser(), to.ToString());
+
+					// Finally, send the non-channel presence of channel members
+					for (std::map<CString, CNick>::const_iterator iter = nicks.begin(); iter != nicks.end(); ++iter) {
+						const CNick &nick = iter->second;
+
+						CXMPPJID from(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
+						Presence(from, "", "", &Stanza);
+					}
+
 					return;
 				}
 			}
