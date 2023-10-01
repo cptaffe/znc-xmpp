@@ -78,6 +78,29 @@ void CXMPPClient::Error(CString tag, CString type, CString code, const CXMPPStan
 	Write(iq, pStanza);
 }
 
+void CXMPPClient::ChannelPresence(const CXMPPJID &from, const CXMPPJID &jid, const CString &type, const CString &status, const std::vector<CString> &codes,  const CXMPPStanza *pStanza) {
+	CXMPPStanza presence("presence");
+	presence.SetAttribute("id", "znc_" + CString::RandomString(8));
+	presence.SetAttribute("from", from.ToString());
+	if (!type.empty())
+		presence.SetAttribute("type", type);
+	if (!status.empty())
+		presence.NewChild("status").NewChild().SetText(status);
+	presence.NewChild("x", "vcard-temp:x:update").NewChild("photo");
+	CXMPPStanza &x = presence.NewChild("x", "http://jabber.org/protocol/muc#user");
+	CXMPPStanza &item = x.NewChild("item");
+	// TODO: check permissions
+	if (!jid.Equals(GetJID()))
+		item.SetAttribute("jid", jid.ToString());
+	item.SetAttribute("affiliation", "member");
+	item.SetAttribute("role", "participant");
+	for (std::vector<CString>::const_iterator iter = codes.begin(); iter != codes.end(); ++iter) {
+		presence.NewChild("status").SetAttribute("code", *iter);
+	}
+
+	Write(presence, pStanza);
+}
+
 void CXMPPClient::StreamStart(CXMPPStanza &Stanza) {
 	Write("<?xml version='1.0' ?>");
 	Write("<stream:stream from='" + GetServerName() + "' version='1.0' xml:lang='en' xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams'>");
@@ -593,12 +616,14 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						Error("item-not-found", "cancel", "404", &Stanza);
 						return;
 					}
+					// TODO: connect if unconnected
 
 					CChan *channel = network->FindChan(to.GetIRCChannel());
 					if (!channel) {
 						Error("item-not-found", "cancel", "404", &Stanza);
 						return;
 					}
+					// TODO: join if not joined
 
 					std::map<CString, CNick> nicks = channel->GetNicks();
 					for (std::map<CString, CNick>::const_iterator iter = nicks.begin(); iter != nicks.end(); ++iter) {
@@ -607,32 +632,11 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						CXMPPJID from = to;
 						from.SetResource(nick.GetNick());
 						CXMPPJID jid(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
-
-						CXMPPStanza presence("presence");
-						presence.SetAttribute("id", "znc_" + CString::RandomString(8));
-						presence.SetAttribute("from", from.ToString());
-						presence.NewChild("x", "vcard-temp:x:update");
-						CXMPPStanza &x = presence.NewChild("x", "http://jabber.org/protocol/muc#user");
-						CXMPPStanza &item = x.NewChild("item");
-						// TODO: check permissions
-						item.SetAttribute("jid", jid.ToString());
-						item.SetAttribute("affiliation", "member");
-						item.SetAttribute("role", "participant");
-
-						Write(presence, &Stanza);
+						ChannelPresence(from, jid, "", "", {}, &Stanza);
 					}
 
 					// User's own presence
-					CXMPPStanza presence("presence");
-					presence.SetAttribute("from", to.ToString());
-					presence.NewChild("x", "vcard-temp:x:update");
-					CXMPPStanza &x = presence.NewChild("x", "http://jabber.org/protocol/muc#user");
-					CXMPPStanza &item = x.NewChild("item");
-					item.SetAttribute("affiliation", "member");
-					item.SetAttribute("role", "participant");
-					presence.NewChild("status").SetAttribute("code", "100"); // non-anonymous
-					presence.NewChild("status").SetAttribute("code", "110"); // self-status
-					Write(presence, &Stanza);
+					ChannelPresence(to, GetJID(), "", "", {"100", "110"}, &Stanza);
 
 					// Room history
 					int maxStanzas = 25;
@@ -688,7 +692,29 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 				}
 			}
 		} else if (Stanza.GetAttribute("type").Equals("unavailable")) {
-			presence.NewChild("unavailable");
+			if (!Stanza.HasAttribute("to")) {
+				presence.NewChild("unavailable");
+				Write(presence, &Stanza);
+				return;
+			} else {
+				/* An occupant exits a room by sending presence of type "unavailable" to its current <room@service/nick>. */
+				CXMPPJID to(Stanza.GetAttribute("to"));
+				if (!to.IsIRCChannel()) {
+					/* Unknown, ignore */
+					return;
+				}
+				CString jid = m_sChannels[to.GetUser()];
+				if (jid.empty() || !CXMPPJID(jid).Equals(to)) {
+					/* Not joined, ignore */
+					return;
+				}
+
+				m_sChannels.erase(to.GetUser());
+				CXMPPJID from = to;
+				to.SetResource("");
+				ChannelPresence(from, jid, "unavailable");
+				return;
+			}
 		} else if (Stanza.GetAttribute("type").Equals("available")) {
 			presence.NewChild("available");
 		}

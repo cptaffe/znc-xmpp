@@ -29,6 +29,7 @@ public:
 
 	bool IsLocal(const CXMPPModule &Module) const;
 	bool IsBlank() const;
+	bool Equals(const CXMPPJID &other) const;
 
 	// IRC bridge
 	bool IsIRC() const;

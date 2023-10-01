@@ -201,7 +201,7 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 			continue;
 
 		// Check that this client is in the channel
-		CString jid = client->GetChannels()[channel->GetName() + "!" + network->GetName() + "+irc"];
+		CString jid = client->GetChannels()[from.GetUser()];
 		if (jid.empty())
 			continue;
 
@@ -216,7 +216,6 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 
 	return CModule::CONTINUE;
 }
-
 
 CModule::EModRet CXMPPModule::OnPrivTextMessage(CTextMessage& message) {
 	CIRCNetwork *network = message.GetNetwork();
@@ -249,6 +248,100 @@ CModule::EModRet CXMPPModule::OnPrivTextMessage(CTextMessage& message) {
 		client->Write(iq);
 	}
 
+	return CModule::CONTINUE;
+}
+
+CModule::EModRet CXMPPModule::OnJoinMessage(CTextMessage& message) {
+	/* Send presence to channel members */
+	CIRCNetwork *network = message.GetNetwork();
+	CChan *channel = message.GetChan();
+	CNick &nick = message.GetNick();
+
+	if (!network || !channel) {
+		return CModule::CONTINUE;
+	}
+
+	CXMPPJID from(channel->GetName() + "!" + network->GetName() + "+irc", GetServerName(), nick.GetNick());
+	CXMPPJID jid(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
+
+	for (std::vector<CXMPPClient*>::const_iterator it = m_vClients.begin(); it != m_vClients.end(); ++it) {
+		CXMPPClient *client = *it;
+		CUser *user = client->GetUser();
+		if (!user || !user->GetUsername().Equals(network->GetUser()->GetUsername()))
+			continue;
+
+		// Check that this client is in the channel
+		CString jid = client->GetChannels()[from.GetUser()];
+		if (jid.empty())
+			continue;
+
+		client->ChannelPresence(from, jid);
+	}
+
+	return CModule::CONTINUE;
+}
+
+CModule::EModRet CXMPPModule::OnPartMessage(CTextMessage& message) {
+	/* Send unavailable status to channel members */
+	CIRCNetwork *network = message.GetNetwork();
+	CChan *channel = message.GetChan();
+	CNick &nick = message.GetNick();
+
+	if (!network || !channel) {
+		return CModule::CONTINUE;
+	}
+
+	CXMPPJID from(channel->GetName() + "!" + network->GetName() + "+irc", GetServerName(), nick.GetNick());
+	CXMPPJID jid(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
+
+	for (std::vector<CXMPPClient*>::const_iterator it = m_vClients.begin(); it != m_vClients.end(); ++it) {
+		CXMPPClient *client = *it;
+		CUser *user = client->GetUser();
+		if (!user || !user->GetUsername().Equals(network->GetUser()->GetUsername()))
+			continue;
+
+		// Check that this client is in the channel
+		CString jid = client->GetChannels()[from.GetUser()];
+		if (jid.empty())
+			continue;
+
+		client->ChannelPresence(from, jid, "unavailable", message.GetParam(0));
+	}
+
+	return CModule::CONTINUE;
+}
+
+CModule::EModRet CXMPPModule::OnQuitMessage(CTextMessage& message) {
+		/* Send unavailable status to channel members */
+	CIRCNetwork *network = message.GetNetwork();
+	CChan *channel = message.GetChan();
+	CNick &nick = message.GetNick();
+
+	if (!network || !channel) {
+		return CModule::CONTINUE;
+	}
+
+	CXMPPJID from(channel->GetName() + "!" + network->GetName() + "+irc", GetServerName(), nick.GetNick());
+	CXMPPJID jid(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
+
+	for (std::vector<CXMPPClient*>::const_iterator it = m_vClients.begin(); it != m_vClients.end(); ++it) {
+		CXMPPClient *client = *it;
+		CUser *user = client->GetUser();
+		if (!user || !user->GetUsername().Equals(network->GetUser()->GetUsername()))
+			continue;
+
+		// Check that this client is in the channel
+		CString jid = client->GetChannels()[from.GetUser()];
+		if (jid.empty())
+			continue;
+
+		client->ChannelPresence(from, jid, "unavailable", message.GetParam(0));
+	}
+
+	return CModule::CONTINUE;
+}
+
+CModule::EModRet CXMPPModule::OnKickMessage(CTextMessage& message) {
 	return CModule::CONTINUE;
 }
 

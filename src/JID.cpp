@@ -75,3 +75,9 @@ CString CXMPPJID::GetIRCUser() const {
 CString CXMPPJID::GetIRCNetwork() const {
 	return m_sUser.Token(1, false, "!").Token(0, false, "+irc");
 }
+
+bool CXMPPJID::Equals(const CXMPPJID &other) const {
+	return m_sUser.Equals(other.m_sUser)
+		&& m_sDomain.Equals(other.m_sDomain)
+		&& m_sResource.Equals(other.m_sResource);
+}

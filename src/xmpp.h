@@ -33,6 +33,10 @@ public:
 
 	CModule::EModRet OnPrivTextMessage(CTextMessage &Message);
     CModule::EModRet OnChanTextMessage(CTextMessage &Message);
+	CModule::EModRet OnJoinMessage(CTextMessage &Message);
+	CModule::EModRet OnPartMessage(CTextMessage &Message);
+	CModule::EModRet OnQuitMessage(CTextMessage &Message);
+	CModule::EModRet OnKickMessage(CTextMessage &Message);
 
 protected:
 	std::vector<CXMPPClient*> m_vClients;

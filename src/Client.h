@@ -13,6 +13,7 @@
 #include <znc/znc.h>
 
 #include "Socket.h"
+#include "JID.h"
 
 class CXMPPClient : public CXMPPSocket {
 public:
@@ -29,7 +30,8 @@ public:
 	bool Write(const CXMPPStanza& Stanza);
 	bool Write(CXMPPStanza& Stanza, const CXMPPStanza *pStanza);
 
-	void Error(CString tag, CString type, CString code = "", const CXMPPStanza *pStanza = NULL);
+	void Error(CString tag, CString type, CString code = "", const CXMPPStanza *pStanza = nullptr);
+	void ChannelPresence(const CXMPPJID &from, const CXMPPJID &jid, const CString &type = "", const CString &status = "", const std::vector<CString> &codes = {}, const CXMPPStanza *pStanza = nullptr);
 
 	virtual void StreamStart(CXMPPStanza &Stanza);
 	virtual void ReceiveStanza(CXMPPStanza &Stanza);
