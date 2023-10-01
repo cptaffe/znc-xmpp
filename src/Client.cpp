@@ -352,7 +352,6 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					return;
 				}
 
-				/* MUC: Querying Room Information: https://xmpp.org/extensions/xep-0045.html#disco-roominfo */
 				if (pQuery->GetAttribute("xmlns").Equals("http://jabber.org/protocol/disco#info")) {
 					if (Stanza.GetAttribute("to").Equals(GetServerName())) {
 						iq.SetAttribute("type", "result");
@@ -408,8 +407,6 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						CXMPPStanza &identity = query.NewChild("identity");
 						identity.SetAttribute("category", "account");
 						identity.SetAttribute("type", "registered");
-						identity.SetAttribute("name", "XMPP Gateway ZNC Module");
-						identity.SetAttribute("type", "text");
 						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/disco#info");
 						query.NewChild("feature").SetAttribute("var", "vcard-temp");
 
@@ -417,6 +414,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						return;
 					}
 
+					/* MUC: Querying Room Information: https://xmpp.org/extensions/xep-0045.html#disco-roominfo */
 					if (to.IsIRCChannel()) {
 						CIRCNetwork *network = m_pUser->FindNetwork(to.GetIRCNetwork());
 						if (network) {
