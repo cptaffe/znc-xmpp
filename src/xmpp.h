@@ -31,13 +31,12 @@ public:
 
 	void SendStanza(CXMPPStanza &Stanza);
 
-	CModule::EModRet OnPrivTextMessage(CTextMessage &Message);
-    CModule::EModRet OnChanTextMessage(CTextMessage &Message);
-	CModule::EModRet OnJoinMessage(CTextMessage &Message);
-	CModule::EModRet OnPartMessage(CTextMessage &Message);
-	CModule::EModRet OnQuitMessage(CTextMessage &Message);
-	CModule::EModRet OnKickMessage(CTextMessage &Message);
-
+	virtual CModule::EModRet OnPrivTextMessage(CTextMessage &Message);
+    virtual CModule::EModRet OnChanTextMessage(CTextMessage &Message);
+	virtual CModule::EModRet OnJoinMessage(CTextMessage &Message);
+	virtual CModule::EModRet OnPartMessage(CTextMessage &Message);
+	virtual CModule::EModRet OnQuitMessage(CTextMessage& message, const std::vector<CChan*> &vChans);
+	virtual CModule::EModRet OnKickMessage(CTextMessage &Message);
 protected:
 	std::vector<CXMPPClient*> m_vClients;
 	CString m_sServerName;
