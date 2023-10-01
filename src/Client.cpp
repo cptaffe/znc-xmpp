@@ -358,9 +358,11 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						iq.SetAttribute("type", "result");
 						CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#info");
 						CXMPPStanza &identity = query.NewChild("identity");
-						identity.SetAttribute("category", "conference");
+						identity.SetAttribute("category", "gateway");
+						identity.SetAttribute("type", "irc");
 						identity.SetAttribute("name", "XMPP Gateway ZNC Module");
-						identity.SetAttribute("type", "text");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/disco#info");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/disco#items");
 						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/muc");
 						query.NewChild("feature").SetAttribute("var", "vcard-temp");
 
@@ -368,7 +370,54 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						return;
 					}
 
-					if (to.IsLocal(*GetModule()) && to.IsIRCChannel()) {
+					if (!to.IsLocal(*GetModule())) {
+						Error("item-not-found", "cancel", "404", &Stanza);
+						return;
+					}
+
+					if (to.IsIRCUser()) {
+						CIRCNetwork *network = m_pUser->FindNetwork(to.GetIRCNetwork());
+						if (!network) {
+							Error("item-not-found", "cancel", "404", &Stanza);
+							return;
+						}
+
+						/* Traverse all channels this client is connected to on this network to confirm the user exists */
+						CNick *nick;
+						for (const auto &entry : m_sChannels) {
+							CXMPPJID jid(entry.second);
+
+							if (!jid.GetIRCNetwork().Equals(network->GetName()))
+								continue;
+
+							CChan *channel = network->FindChan(jid.GetIRCChannel());
+							if (!channel) {
+								Error("item-not-found", "cancel", "404", &Stanza);
+								return;
+							}
+
+							CNick *nick = channel->FindNick(to.GetIRCUser());
+						}
+						if (!nick) {
+							Error("item-not-found", "cancel", "404", &Stanza);
+							return;
+						}
+
+						iq.SetAttribute("type", "result");
+						CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#info");
+						CXMPPStanza &identity = query.NewChild("identity");
+						identity.SetAttribute("category", "account");
+						identity.SetAttribute("type", "registered");
+						identity.SetAttribute("name", "XMPP Gateway ZNC Module");
+						identity.SetAttribute("type", "text");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/disco#info");
+						query.NewChild("feature").SetAttribute("var", "vcard-temp");
+
+						Write(iq, &Stanza);
+						return;
+					}
+
+					if (to.IsIRCChannel()) {
 						CIRCNetwork *network = m_pUser->FindNetwork(to.GetIRCNetwork());
 						if (network) {
 							CChan *channel = network->FindChan(to.GetIRCChannel());
@@ -377,8 +426,8 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 								CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#info");
 								CXMPPStanza &identity = query.NewChild("identity");
 								identity.SetAttribute("category", "conference");
+								identity.SetAttribute("type", "irc");
 								identity.SetAttribute("name", channel->GetName() + " on " + network->GetName());
-								identity.SetAttribute("type", "text");
 								query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/muc");
 								query.NewChild("feature").SetAttribute("var", "muc_nonanonymous");
 								query.NewChild("feature").SetAttribute("var", "muc_open");
@@ -391,7 +440,6 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						}
 					}
 
-					/* Item Not Found */
 					Error("item-not-found", "cancel", "404", &Stanza);
 					return;
 				}
@@ -612,11 +660,11 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 				}
 
 				CXMPPStanza *pX = Stanza.GetChildByName("x", "http://jabber.org/protocol/muc");
-				if (pX ) {
+				if (pX) {
 					// TODO: Broadcast to any other XMPP clients in this room
 
-					if (!to.IsIRCChannel()) {
-						Error("jid-malformed", "modify", "400", &Stanza);
+					if (!(to.IsLocal(*GetModule()) && to.IsIRCChannel())) {
+						Error("item-not-found", "cancel", "404", &Stanza);
 						return;
 					}
 
@@ -716,7 +764,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 			} else {
 				/* An occupant exits a room by sending presence of type "unavailable" to its current <room@service/nick>. */
 				CXMPPJID to(Stanza.GetAttribute("to"));
-				if (!to.IsIRCChannel()) {
+				if (!(to.IsLocal(*GetModule()) && to.IsIRCChannel())) {
 					/* Unknown, ignore */
 					return;
 				}
