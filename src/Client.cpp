@@ -683,8 +683,8 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					// TODO: join if not joined
 
 					std::map<CString, CNick> nicks = channel->GetNicks();
-					for (const auto &nick : nicks) {
-						const CNick &nick = iter->second;
+					for (const auto &entry : nicks) {
+						const CNick &nick = entry.second;
 
 						CXMPPJID from = to;
 						from.SetResource(nick.GetNick());
