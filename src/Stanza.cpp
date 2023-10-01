@@ -34,8 +34,8 @@ CString CXMPPStanza::ToString() const {
 	if (IsTag()) {
 		CString sOutput = "<" + GetName();
 
-		for (MCString::const_iterator it = m_msAttributes.begin(); it != m_msAttributes.end(); ++it) {
-			sOutput += " " + it->first + "='" + it->second + "'";
+		for (const auto &entry : m_msAttributes) {
+			sOutput += " " + entry.first + "='" + entry.second + "'";
 		}
 
 		if (m_vChildren.empty()) {
@@ -44,9 +44,7 @@ CString CXMPPStanza::ToString() const {
 
 		sOutput += ">";
 
-		std::vector<CXMPPStanza*>::const_iterator it;
-		for (it = m_vChildren.begin(); it != m_vChildren.end(); ++it) {
-			CXMPPStanza *pChild = *it;
+		for (const auto &pChild : m_vChildren) {
 			sOutput += pChild->ToString();
 		}
 
@@ -156,10 +154,7 @@ CXMPPStanza& CXMPPStanza::NewChild(CString sName, CString sNamespace) {
 }
 
 CXMPPStanza* CXMPPStanza::GetChildByName(CString sName) const {
-	std::vector<CXMPPStanza*>::const_iterator it;
-	for (it = m_vChildren.begin(); it != m_vChildren.end(); ++it) {
-		CXMPPStanza *pChild = *it;
-
+	for (const auto &pChild : m_vChildren) {
 		if (pChild->GetName().Equals(sName)) {
 			return pChild;
 		}
@@ -169,10 +164,7 @@ CXMPPStanza* CXMPPStanza::GetChildByName(CString sName) const {
 }
 
 CXMPPStanza* CXMPPStanza::GetChildByName(CString sName, CString sNamespace) const {
-	std::vector<CXMPPStanza*>::const_iterator it;
-	for (it = m_vChildren.begin(); it != m_vChildren.end(); ++it) {
-		CXMPPStanza *pChild = *it;
-
+	for (const auto &pChild : m_vChildren) {
 		if (pChild->GetName().Equals(sName) && pChild->GetAttribute("xmlns").Equals(sNamespace)) {
 			return pChild;
 		}
@@ -182,10 +174,7 @@ CXMPPStanza* CXMPPStanza::GetChildByName(CString sName, CString sNamespace) cons
 }
 
 CXMPPStanza* CXMPPStanza::GetTextChild() const {
-	std::vector<CXMPPStanza*>::const_iterator it;
-	for (it = m_vChildren.begin(); it != m_vChildren.end(); ++it) {
-		CXMPPStanza *pChild = *it;
-
+	for (const auto &pChild : m_vChildren) {
 		if (pChild->IsText()) {
 			return pChild;
 		}

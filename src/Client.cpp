@@ -106,8 +106,8 @@ void CXMPPClient::ChannelPresence(const CXMPPJID &from, const CXMPPJID &jid, con
 		item.SetAttribute("jid", jid.ToString());
 	item.SetAttribute("affiliation", "member");
 	item.SetAttribute("role", "participant");
-	for (std::vector<CString>::const_iterator iter = codes.begin(); iter != codes.end(); ++iter) {
-		presence.NewChild("status").SetAttribute("code", *iter);
+	for (const auto& it : codes) {
+		presence.NewChild("status").SetAttribute("code", it);
 	}
 
 	Write(presence, pStanza);
@@ -327,15 +327,13 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 					// Enumerate networks
 					const std::vector<CIRCNetwork*> &networks = m_pUser->GetNetworks();
-					for (std::vector<CIRCNetwork*>::const_iterator it = networks.begin(); it != networks.end(); ++it) {
-						CIRCNetwork *network = *it;
+					for (const auto& network : networks) {
 						if (!network->IsIRCConnected())
 							continue;
 
 						// Enumerate channels
 						const std::vector<CChan*> &channels = network->GetChans();
-						for (std::vector<CChan*>::const_iterator it = channels.begin(); it != channels.end(); ++it) {
-							CChan *channel = *it;
+						for (const auto &channel : channels) {
 							if (!channel->IsOn())
 								continue;
 
@@ -405,8 +403,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 					// Enumerate networks
 					const std::vector<CIRCNetwork*> &networks = m_pUser->GetNetworks();
-					for (std::vector<CIRCNetwork*>::const_iterator it = networks.begin(); it != networks.end(); ++it) {
-						CIRCNetwork *network = *it;
+					for (const auto &network : networks) {
 						if (!network->IsIRCConnected())
 							continue;
 
@@ -638,7 +635,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					// TODO: join if not joined
 
 					std::map<CString, CNick> nicks = channel->GetNicks();
-					for (std::map<CString, CNick>::const_iterator iter = nicks.begin(); iter != nicks.end(); ++iter) {
+					for (const auto &nick : nicks) {
 						const CNick &nick = iter->second;
 
 						CXMPPJID from = to;
@@ -672,8 +669,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						}
 
 						// Traverse forward through time, writing messages
-						for (std::deque<CXMPPBufLine>::const_iterator iter = history.begin(); iter != history.end(); ++iter) {
-							const CXMPPBufLine &line = *iter;
+						for (const auto &line : history) {
 							const CMessage &msg = line.GetMessage();
 
 							CXMPPJID from(to.GetUser(), to.GetDomain(), msg.GetNick().GetNick());
@@ -702,8 +698,8 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					m_sChannels.emplace(to.GetUser(), to.ToString());
 
 					// Finally, send the non-channel presence of channel members
-					for (std::map<CString, CNick>::const_iterator iter = nicks.begin(); iter != nicks.end(); ++iter) {
-						const CNick &nick = iter->second;
+					for (const auto &entry : nicks) {
+						const CNick &nick = entry.second;
 
 						CXMPPJID from(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
 						Presence(from, "", "", &Stanza);

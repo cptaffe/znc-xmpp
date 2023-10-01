@@ -70,9 +70,7 @@ void CXMPPModule::ClientConnected(CXMPPClient &Client) {
 
 void CXMPPModule::ClientDisconnected(CXMPPClient &Client) {
 	std::vector<CXMPPClient*>::iterator it;
-	for (it = m_vClients.begin(); it != m_vClients.end(); ++it) {
-		CXMPPClient *pClient = *it;
-
+	for (const auto &pClient : m_vClients) {
 		if (pClient == &Client) {
 			m_vClients.erase(it);
 			break;
@@ -80,12 +78,10 @@ void CXMPPModule::ClientDisconnected(CXMPPClient &Client) {
 	}
 }
 
-CXMPPClient* CXMPPModule::Client(CUser& User, CString sResource) const {
+CXMPPClient* CXMPPModule::Client(CUser& user, CString sResource) const {
 	std::vector<CXMPPClient*>::const_iterator it;
-	for (it = m_vClients.begin(); it != m_vClients.end(); ++it) {
-		CXMPPClient *pClient = *it;
-
-		if (pClient->GetUser() == &User && sResource.Equals(pClient->GetResource())) {
+	for (const auto &pClient : m_vClients) {
+		if (pClient->GetUser() == &user && sResource.Equals(pClient->GetResource())) {
 			return pClient;
 		}
 	}
@@ -101,9 +97,7 @@ CXMPPClient* CXMPPModule::Client(const CXMPPJID& jid, bool bAcceptNegative) cons
 	CXMPPClient *pCurrent = NULL;
 
 	std::vector<CXMPPClient*>::const_iterator it;
-	for (it = m_vClients.begin(); it != m_vClients.end(); ++it) {
-		CXMPPClient *pClient = *it;
-
+	for (const auto &pClient : m_vClients) {
 		if (pClient->GetUser() && pClient->GetUser()->GetUserName().Equals(jid.GetUser())) {
 			if (!jid.GetResource().empty() && jid.GetResource().Equals(pClient->GetResource())) {
 				return pClient;
@@ -194,8 +188,7 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 	CXMPPStanza &body = iq.NewChild("body");
 	body.NewChild().SetText(message.GetText());
 
-	for (std::vector<CXMPPClient*>::const_iterator it = m_vClients.begin(); it != m_vClients.end(); ++it) {
-		CXMPPClient *client = *it;
+	for (const auto &client : m_vClients) {
 		CUser *user = client->GetUser();
 		if (!user || !user->GetUsername().Equals(network->GetUser()->GetUsername()))
 			continue;
@@ -234,8 +227,7 @@ CModule::EModRet CXMPPModule::OnPrivTextMessage(CTextMessage& message) {
 	CXMPPStanza &body = iq.NewChild("body");
 	body.NewChild().SetText(message.GetText());
 
-	for (std::vector<CXMPPClient*>::const_iterator it = m_vClients.begin(); it != m_vClients.end(); ++it) {
-		CXMPPClient *client = *it;
+	for (const auto &client : m_vClients) {
 		CUser *user = client->GetUser();
 		// TODO: Are user pointers comparable?
 		if (!user || !user->GetUsername().Equals(network->GetUser()->GetUsername()))
@@ -264,8 +256,7 @@ CModule::EModRet CXMPPModule::OnJoinMessage(CTextMessage& message) {
 	CXMPPJID from(channel->GetName() + "!" + network->GetName() + "+irc", GetServerName(), nick.GetNick());
 	CXMPPJID jid(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
 
-	for (std::vector<CXMPPClient*>::const_iterator it = m_vClients.begin(); it != m_vClients.end(); ++it) {
-		CXMPPClient *client = *it;
+	for (const auto &client : m_vClients) {
 		CUser *user = client->GetUser();
 		if (!user || !user->GetUsername().Equals(network->GetUser()->GetUsername()))
 			continue;
@@ -294,8 +285,7 @@ CModule::EModRet CXMPPModule::OnPartMessage(CTextMessage& message) {
 	CXMPPJID from(channel->GetName() + "!" + network->GetName() + "+irc", GetServerName(), nick.GetNick());
 	CXMPPJID jid(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
 
-	for (std::vector<CXMPPClient*>::const_iterator it = m_vClients.begin(); it != m_vClients.end(); ++it) {
-		CXMPPClient *client = *it;
+	for (const auto &client : m_vClients) {
 		CUser *user = client->GetUser();
 		if (!user || !user->GetUsername().Equals(network->GetUser()->GetUsername()))
 			continue;
@@ -322,14 +312,12 @@ CModule::EModRet CXMPPModule::OnQuitMessage(CTextMessage& message, const std::ve
 
 	CXMPPJID jid(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
 
-	for (std::vector<CXMPPClient*>::const_iterator it = m_vClients.begin(); it != m_vClients.end(); ++it) {
-		CXMPPClient *client = *it;
+	for (const auto &client : m_vClients) {
 		CUser *user = client->GetUser();
 		if (!user || !user->GetUsername().Equals(network->GetUser()->GetUsername()))
 			continue;
 
-		for (std::vector<CChan *>::const_iterator iter = vChans.begin(); iter != vChans.end(); ++iter) {
-			CChan *channel = *iter;
+		for (const auto &channel : vChans) {
 			CXMPPJID from(channel->GetName() + "!" + network->GetName() + "+irc", GetServerName(), nick.GetNick());
 
 			// Check that this client is in the channel
