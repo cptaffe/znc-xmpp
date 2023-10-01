@@ -183,15 +183,14 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 		return CModule::CONTINUE;
 	}
 
-	CString channelJID = channel->GetName() + "!" + network->GetName() + "+irc@" + GetServerName();
+	CXMPPJID from(channel->GetName() + "!" + network->GetName() + "+irc", GetServerName(), nick.GetNick());
 
 	CXMPPStanza iq("message");
 	iq.SetAttribute("id", "znc_" + CString::RandomString(8));
 	iq.SetAttribute("type", "groupchat");
 	if (!nick.GetNick().Equals(network->GetCurNick())) {
-		iq.SetAttribute("from", channelJID + "/" + nick.GetNick());
+		iq.SetAttribute("from", from.ToString());
 	}
-	iq.SetAttribute("to", channelJID);
 	CXMPPStanza &body = iq.NewChild("body");
 	body.NewChild().SetText(message.GetText());
 
@@ -211,6 +210,7 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 			iq.SetAttribute("from", jid);
 		}
 
+		iq.SetAttribute("to", client->GetJID());
 		client->Write(iq);
 	}
 
