@@ -37,6 +37,8 @@ public:
 	virtual void StreamStart(CXMPPStanza &Stanza);
 	virtual void ReceiveStanza(CXMPPStanza &Stanza);
 
+	void JoinChannel(const CChan *channel, const CXMPPJID &to, int maxStanzas = 25);
+
 protected:
 	CUser *m_pUser;
 

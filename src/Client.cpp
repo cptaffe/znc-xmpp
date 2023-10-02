@@ -716,19 +716,6 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					}
 					// TODO: join if not joined
 
-					std::map<CString, CNick> nicks = channel->GetNicks();
-					for (const auto &entry : nicks) {
-						const CNick &nick = entry.second;
-
-						CXMPPJID from = to;
-						from.SetResource(nick.GetNick());
-						CXMPPJID jid(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
-						ChannelPresence(from, jid, "", "", {}, &Stanza);
-					}
-
-					// User's own presence
-					ChannelPresence(to, GetJID(), "", "", {"100", "110"}, &Stanza);
-
 					// Room history
 					int maxStanzas = 25;
 					CXMPPStanza *pHistory = pX->GetChildByName("history");
@@ -736,57 +723,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						maxStanzas = pHistory->GetAttribute("maxstanzas").ToInt();
 					}
 
-					// Traverse back through time, finding messages
-					const CBuffer &buffer = channel->GetBuffer();
-					if (buffer.Size()) {
-						std::deque<CXMPPBufLine> history;
-						for (size_t i = buffer.Size()-1; i >= 0; i--) {
-							const CXMPPBufLine &line = CXMPPBufLine(buffer.GetBufLine(i));
-							if (!line.GetCommand().Equals("PRIVMSG"))
-								continue;
-
-							history.push_front(line);
-							if (history.size() == maxStanzas)
-								break;
-						}
-
-						// Traverse forward through time, writing messages
-						for (const auto &line : history) {
-							const CMessage &msg = line.GetMessage();
-
-							CXMPPJID from(to.GetUser(), to.GetDomain(), msg.GetNick().GetNick());
-							CXMPPJID channelJID(to.GetUser(), GetServerName());
-							CXMPPStanza message("message");
-							message.SetAttribute("id", "znc_" + CString::RandomString(8));
-							message.SetAttribute("from", from.ToString());
-							message.SetAttribute("type", "groupchat");
-							message.NewChild("body").NewChild().SetText(line.GetText());
-							AddDelay(message, channelJID.ToString(), msg.GetTime());
-							Write(message, &Stanza);
-						}
-					}
-
-					// Room subject
-					CXMPPJID owner(to.GetUser(), to.GetDomain(), CNick(channel->GetTopicOwner()).GetNick());
-					CXMPPJID channelJID(to.GetUser(), GetServerName());
-					CXMPPStanza message("message");
-					message.SetAttribute("id", "znc_" + CString::RandomString(8));
-					message.SetAttribute("from", owner.ToString());
-					message.SetAttribute("type", "groupchat");
-					message.NewChild("subject").NewChild().SetText(channel->GetTopic());
-					AddDelay(message, channelJID.ToString(), (time_t)channel->GetTopicDate());
-					Write(message, &Stanza);
-
-					m_sChannels.emplace(to.GetUser(), to.ToString());
-
-					// Finally, send the non-channel presence of channel members
-					for (const auto &entry : nicks) {
-						const CNick &nick = entry.second;
-
-						CXMPPJID from(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
-						Presence(from, "", "", &Stanza);
-					}
-
+					JoinChannel(channel, to, maxStanzas);
 					return;
 				}
 			}
@@ -823,4 +760,71 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 	}
 
 	DEBUG("XMPPClient unsupported stanza [" << Stanza.GetName() << "]");
+}
+
+void CXMPPClient::JoinChannel(const CChan *channel, const CXMPPJID &to, int maxStanzas) {
+	const CIRCNetwork *network = channel->GetNetwork();
+	std::map<CString, CNick> nicks = channel->GetNicks();
+	for (const auto &entry : nicks) {
+		const CNick &nick = entry.second;
+
+		CXMPPJID from = to;
+		from.SetResource(nick.GetNick());
+		CXMPPJID jid(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
+		ChannelPresence(from, jid);
+	}
+
+	// User's own presence
+	ChannelPresence(to, GetJID(), "", "", {"100", "110"});
+
+	// Traverse back through time, finding messages
+	const CBuffer &buffer = channel->GetBuffer();
+	if (buffer.Size()) {
+		std::deque<CXMPPBufLine> history;
+		for (size_t i = buffer.Size()-1; i >= 0; i--) {
+			const CXMPPBufLine &line = CXMPPBufLine(buffer.GetBufLine(i));
+			if (!line.GetCommand().Equals("PRIVMSG"))
+				continue;
+
+			history.push_front(line);
+			if (history.size() == maxStanzas)
+				break;
+		}
+
+		// Traverse forward through time, writing messages
+		for (const auto &line : history) {
+			const CMessage &msg = line.GetMessage();
+
+			CXMPPJID from(to.GetUser(), to.GetDomain(), msg.GetNick().GetNick());
+			CXMPPJID channelJID(to.GetUser(), GetServerName());
+			CXMPPStanza message("message");
+			message.SetAttribute("id", "znc_" + CString::RandomString(8));
+			message.SetAttribute("from", from.ToString());
+			message.SetAttribute("type", "groupchat");
+			message.NewChild("body").NewChild().SetText(line.GetText());
+			AddDelay(message, channelJID.ToString(), msg.GetTime());
+			Write(message);
+		}
+	}
+
+	// Room subject
+	CXMPPJID owner(to.GetUser(), to.GetDomain(), CNick(channel->GetTopicOwner()).GetNick());
+	CXMPPJID channelJID(to.GetUser(), GetServerName());
+	CXMPPStanza message("message");
+	message.SetAttribute("id", "znc_" + CString::RandomString(8));
+	message.SetAttribute("from", owner.ToString());
+	message.SetAttribute("type", "groupchat");
+	message.NewChild("subject").NewChild().SetText(channel->GetTopic());
+	AddDelay(message, channelJID.ToString(), (time_t)channel->GetTopicDate());
+	Write(message);
+
+	m_sChannels.emplace(to.GetUser(), to.ToString());
+
+	// Finally, send the non-channel presence of channel members
+	for (const auto &entry : nicks) {
+		const CNick &nick = entry.second;
+
+		CXMPPJID from(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
+		Presence(from);
+	}
 }
