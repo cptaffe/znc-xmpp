@@ -512,7 +512,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 							CNick *nick = channel->FindNick(to.GetIRCUser());
 						}
 						if (!nick) {
-							Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC nick in network");
+							Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC nick " + to.GetIRCUser() + " in network " + to.GetIRCNetwork());
 							return;
 						}
 

@@ -73,7 +73,9 @@ CString CXMPPJID::GetIRCUser() const {
 }
 
 CString CXMPPJID::GetIRCNetwork() const {
-	return m_sUser.Token(1, false, "!").Token(0, false, "+irc");
+	CString network = m_sUser.Token(1, false, "!");
+	network.TrimSuffix("+irc");
+	return network;
 }
 
 bool CXMPPJID::Equals(const CXMPPJID &other) const {
