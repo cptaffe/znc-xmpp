@@ -357,9 +357,24 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						iq.SetAttribute("type", "result");
 						CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#info");
 						CXMPPStanza &identity = query.NewChild("identity");
+						/* XMPP Server */
+						identity.SetAttribute("category", "server");
+						identity.SetAttribute("type", "im");
+						identity.SetAttribute("name", "XMPP ZNC Module");
+						/* IRC Gateway */
 						identity.SetAttribute("category", "gateway");
 						identity.SetAttribute("type", "irc");
-						identity.SetAttribute("name", "XMPP Gateway ZNC Module");
+						identity.SetAttribute("name", "XMPP ZNC Module");
+						/* Chatroom directory */
+						identity = query.NewChild("identity");
+						identity.SetAttribute("category", "directory");
+						identity.SetAttribute("type", "chatroom");
+						identity.SetAttribute("name", "IRC Channels");
+						/* User Directory */
+						identity = query.NewChild("identity");
+						identity.SetAttribute("category", "directory");
+						identity.SetAttribute("type", "user");
+						identity.SetAttribute("name", "IRC Users");
 						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/disco#info");
 						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/disco#items");
 						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/muc");
@@ -374,6 +389,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						return;
 					}
 
+					/* Info on a user */
 					if (to.IsIRCUser()) {
 						CIRCNetwork *network = m_pUser->FindNetwork(to.GetIRCNetwork());
 						if (!network) {
@@ -407,8 +423,24 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						CXMPPStanza &identity = query.NewChild("identity");
 						identity.SetAttribute("category", "account");
 						identity.SetAttribute("type", "registered");
+						query.NewChild("identity");
+						identity.SetAttribute("category", "pubsub");
+						identity.SetAttribute("type", "pep");
 						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/disco#info");
 						query.NewChild("feature").SetAttribute("var", "vcard-temp");
+						query.NewChild("feature").SetAttribute("var", "urn:xmpp:tmp:profile");
+						/* Personal Eventing Protocol: https://xmpp.org/extensions/xep-0163.html */
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/pubsub#access-presence");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/pubsub#auto-create");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/pubsub#auto-subscribe");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/pubsub#config-node");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/pubsub#create-and-configure");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/pubsub#create-nodes");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/pubsub#filtered-notifications");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/pubsub#persistent-items");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/pubsub#publish");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/pubsub#retrieve-items");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/pubsub#subscribe");
 
 						Write(iq, &Stanza);
 						return;
