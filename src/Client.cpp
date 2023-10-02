@@ -66,19 +66,25 @@ bool CXMPPClient::Write(CXMPPStanza &Stanza, const CXMPPStanza *pStanza) {
 }
 
 void CXMPPClient::Error(const CString &tag, const CString &type, const CString &code, const CXMPPStanza *pStanza, const CString &text) {
-	CXMPPStanza iq("iq");
-	iq.SetAttribute("to", GetJID());
-	iq.SetAttribute("type", "error");
-	CXMPPStanza &error = iq.NewChild("error");
+	CXMPPStanza parent("iq");
+	if (pStanza) {
+		parent.SetName(pStanza->GetName());
+		parent.SetAttribute("xmlns", pStanza->GetAttribute("xmlns"));
+	}
+	parent.SetAttribute("to", GetJID());
+	parent.SetAttribute("type", "error");
+	CXMPPStanza &error = parent.NewChild("error");
 	if (!code.empty()) {
 		error.SetAttribute("code", code);
 	}
 	error.SetAttribute("type", type);
 	error.NewChild(tag, "urn:ietf:params:xml:ns:xmpp-stanzas");
-	CXMPPStanza &txt = error.NewChild("text", "urn:ietf:params:xml:ns:xmpp-streams");
-	txt.SetAttribute("xml:lang", "en-US");
-	txt.NewChild().SetText(text);
-	Write(iq, pStanza);
+	if (!text.empty()) {
+		CXMPPStanza &txt = error.NewChild("text", "urn:ietf:params:xml:ns:xmpp-streams");
+		txt.SetAttribute("xml:lang", "en-US");
+		txt.NewChild().SetText(text);
+	}
+	Write(parent, pStanza);
 }
 
 void CXMPPClient::Presence(const CXMPPJID &from, const CString &type, const CString &status,  const CXMPPStanza *pStanza) {
