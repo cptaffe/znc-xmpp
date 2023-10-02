@@ -65,7 +65,7 @@ bool CXMPPClient::Write(CXMPPStanza &Stanza, const CXMPPStanza *pStanza) {
 	return Write(Stanza.ToString());
 }
 
-void CXMPPClient::Error(CString tag, CString type, CString code, const CXMPPStanza *pStanza) {
+void CXMPPClient::Error(const CString &tag, const CString &type, const CString &code, const CXMPPStanza *pStanza, const CString &text) {
 	CXMPPStanza iq("iq");
 	iq.SetAttribute("to", GetJID());
 	iq.SetAttribute("type", "error");
@@ -75,6 +75,9 @@ void CXMPPClient::Error(CString tag, CString type, CString code, const CXMPPStan
 	}
 	error.SetAttribute("type", type);
 	error.NewChild(tag, "urn:ietf:params:xml:ns:xmpp-stanzas");
+	CXMPPStanza &txt = error.NewChild("text", "urn:ietf:params:xml:ns:xmpp-streams");
+	txt.SetAttribute("xml:lang", "en-US");
+	txt.NewChild().SetText(text);
 	Write(iq, pStanza);
 }
 
@@ -385,7 +388,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					}
 
 					if (!to.IsLocal(*GetModule())) {
-						Error("item-not-found", "cancel", "404", &Stanza);
+						Error("item-not-found", "cancel", "404", &Stanza, "Unknown server");
 						return;
 					}
 
@@ -393,7 +396,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					if (to.IsIRCUser()) {
 						CIRCNetwork *network = m_pUser->FindNetwork(to.GetIRCNetwork());
 						if (!network) {
-							Error("item-not-found", "cancel", "404", &Stanza);
+							Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC network");
 							return;
 						}
 
@@ -407,14 +410,14 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 							CChan *channel = network->FindChan(jid.GetIRCChannel());
 							if (!channel) {
-								Error("item-not-found", "cancel", "404", &Stanza);
+								Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC channel in network");
 								return;
 							}
 
 							CNick *nick = channel->FindNick(to.GetIRCUser());
 						}
 						if (!nick) {
-							Error("item-not-found", "cancel", "404", &Stanza);
+							Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC nick in network");
 							return;
 						}
 
@@ -470,7 +473,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						}
 					}
 
-					Error("item-not-found", "cancel", "404", &Stanza);
+					Error("item-not-found", "cancel", "404", &Stanza, "Unknown entity, not this server or an IRC channel or nick");
 					return;
 				}
 
@@ -509,23 +512,23 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 					Write(iq, &Stanza);
 					return;
-				} else {
-					// Another user's vCard
-					CXMPPJID to(pVCard->GetAttribute("to"));
-					if (to.IsIRCUser()) {
-						iq.SetAttribute("type", "result");
-						CXMPPStanza &vCard = iq.NewChild("vCard", "vcard-temp");
-						vCard.NewChild("NICKNAME").NewChild().SetText(to.GetIRCUser());
-						vCard.NewChild("FN").NewChild().SetText(to.GetIRCUser() + " on " + to.GetIRCNetwork());
+				}
 
-						Write(iq, &Stanza);
-						return;
-					}
+				// Another user's vCard
+				CXMPPJID to(pVCard->GetAttribute("to"));
+				if (to.IsIRCUser()) {
+					iq.SetAttribute("type", "result");
+					CXMPPStanza &vCard = iq.NewChild("vCard", "vcard-temp");
+					vCard.NewChild("NICKNAME").NewChild().SetText(to.GetIRCUser());
+					vCard.NewChild("FN").NewChild().SetText(to.GetIRCUser() + " on " + to.GetIRCNetwork());
 
-					/* Item Not Found */
-					Error("item-not-found", "cancel", "404", &Stanza);
+					Write(iq, &Stanza);
 					return;
 				}
+
+				/* Item Not Found */
+				Error("item-not-found", "cancel", "404", &Stanza, "vCard can only be fetched for this user or an IRC nick");
+				return;
 			}
 
 
@@ -694,20 +697,20 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					// TODO: Broadcast to any other XMPP clients in this room
 
 					if (!(to.IsLocal(*GetModule()) && to.IsIRCChannel())) {
-						Error("item-not-found", "cancel", "404", &Stanza);
+						Error("item-not-found", "cancel", "404", &Stanza, "Channel is not on this server or is not an IRC channel");
 						return;
 					}
 
 					CIRCNetwork *network = m_pUser->FindNetwork(to.GetIRCNetwork());
 					if (!network) {
-						Error("item-not-found", "cancel", "404", &Stanza);
+						Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC network");
 						return;
 					}
 					// TODO: connect if unconnected
 
 					CChan *channel = network->FindChan(to.GetIRCChannel());
 					if (!channel) {
-						Error("item-not-found", "cancel", "404", &Stanza);
+						Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC channel");
 						return;
 					}
 					// TODO: join if not joined
