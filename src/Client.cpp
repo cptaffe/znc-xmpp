@@ -323,44 +323,102 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 				/* Service Discovery: https://xmpp.org/extensions/xep-0030.html */
 				/* MUC: Discovering Rooms: https://xmpp.org/extensions/xep-0045.html#disco-rooms */
-				if (pQuery->GetAttribute("xmlns").Equals("http://jabber.org/protocol/disco#items")
-						&& Stanza.GetAttribute("to").Equals(GetServerName())) {
-					iq.SetAttribute("type", "result");
-					CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#items");
+				if (pQuery->GetAttribute("xmlns").Equals("http://jabber.org/protocol/disco#items")) {
+					if (Stanza.GetAttribute("to").Equals(GetServerName())) {
+						iq.SetAttribute("type", "result");
+						CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#items");
 
-					// Enumerate networks
-					const std::vector<CIRCNetwork*> &networks = m_pUser->GetNetworks();
-					for (const auto& network : networks) {
-						if (!network->IsIRCConnected())
-							continue;
+						/* List directories as separate servers */
+						CXMPPStanza &item = query.NewChild("item");
+						item.SetAttribute("jid", "channels." + GetServerName());
+						item.SetAttribute("name", "Directory of IRC Channels");
+						item = query.NewChild("item");
+						item.SetAttribute("jid", "users." + GetServerName());
+						item.SetAttribute("name", "Directory of IRC Users");
 
-						// Enumerate channels
-						const std::vector<CChan*> &channels = network->GetChans();
-						for (const auto &channel : channels) {
-							if (!channel->IsOn())
-								continue;
-
-							// Present each channel as a room
-							// JID grammar: https://xmpp.org/extensions/xep-0029.html#sect-idm45406366945648
-							CString jid = channel->GetName() + "!" + network->GetName() + "+irc@" + GetServerName();
-							CString name = channel->GetName() + " on " + network->GetName();
-
-							CXMPPStanza &item = query.NewChild("item");
-							item.SetAttribute("jid", jid);
-							item.SetAttribute("name", name);
-						}
+						Write(iq, &Stanza);
+						return;
 					}
 
-					Write(iq, &Stanza);
-					return;
+					/* User Directory */
+					if (Stanza.GetAttribute("to").Equals("users." + GetServerName())) {
+						iq.SetAttribute("type", "result");
+						CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#items");
+
+						// Enumerate networks
+						const std::vector<CIRCNetwork*> &networks = m_pUser->GetNetworks();
+						for (const auto& network : networks) {
+							if (!network->IsIRCConnected())
+								continue;
+
+							// Enumerate channels
+							std::set<CString> nicks;
+							const std::vector<CChan*> &channels = network->GetChans();
+							for (const auto &channel : channels) {
+								if (!channel->IsOn())
+									continue;
+
+								for (const auto &entry : channel->GetNicks()) {
+									nicks.insert(entry.second.GetNick());
+								}
+							}
+
+							// Present each unique nick on the network as a user
+							for (const auto &nick : nicks) {
+								// JID grammar: https://xmpp.org/extensions/xep-0029.html#sect-idm45406366945648
+								CString jid = nick + "!" + network->GetName() + "+irc@" + GetServerName();
+								CString name = nick + " on " + network->GetName();
+
+								CXMPPStanza &item = query.NewChild("item");
+								item.SetAttribute("jid", jid);
+								item.SetAttribute("name", name);
+							}
+						}
+
+						Write(iq, &Stanza);
+						return;
+					}
+
+					/* Channel Directory */
+					if (Stanza.GetAttribute("to").Equals("channels." + GetServerName())) {
+						iq.SetAttribute("type", "result");
+						CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#items");
+
+						// Enumerate networks
+						const std::vector<CIRCNetwork*> &networks = m_pUser->GetNetworks();
+						for (const auto& network : networks) {
+							if (!network->IsIRCConnected())
+								continue;
+
+							// Enumerate channels
+							const std::vector<CChan*> &channels = network->GetChans();
+							for (const auto &channel : channels) {
+								if (!channel->IsOn())
+									continue;
+
+								// Present each channel as a room
+								// JID grammar: https://xmpp.org/extensions/xep-0029.html#sect-idm45406366945648
+								CString jid = channel->GetName() + "!" + network->GetName() + "+irc@" + GetServerName();
+								CString name = channel->GetName() + " on " + network->GetName();
+
+								CXMPPStanza &item = query.NewChild("item");
+								item.SetAttribute("jid", jid);
+								item.SetAttribute("name", name);
+							}
+						}
+
+						Write(iq, &Stanza);
+						return;
+					}
+
 				}
 
 				if (pQuery->GetAttribute("xmlns").Equals("http://jabber.org/protocol/disco#info")) {
 					if (Stanza.GetAttribute("to").Equals(GetServerName())) {
 						iq.SetAttribute("type", "result");
 						CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#info");
-						CXMPPStanza &identity = query.NewChild("identity");
 						/* XMPP Server */
+						CXMPPStanza &identity = query.NewChild("identity");
 						identity.SetAttribute("category", "server");
 						identity.SetAttribute("type", "im");
 						identity.SetAttribute("name", "XMPP ZNC Module");
@@ -369,20 +427,55 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						identity.SetAttribute("category", "gateway");
 						identity.SetAttribute("type", "irc");
 						identity.SetAttribute("name", "XMPP ZNC Module");
-						/* Chatroom directory */
-						identity = query.NewChild("identity");
-						identity.SetAttribute("category", "directory");
-						identity.SetAttribute("type", "chatroom");
-						identity.SetAttribute("name", "IRC Channels");
-						/* User Directory */
-						identity = query.NewChild("identity");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/disco#info");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/disco#items");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/muc");
+						query.NewChild("feature").SetAttribute("var", "vcard-temp");
+						query.NewChild("feature").SetAttribute("var", "jabber:iq:search");
+						query.NewChild("feature").SetAttribute("var", "jabber:iq:time");
+						query.NewChild("feature").SetAttribute("var", "jabber:iq:version");
+
+						Write(iq, &Stanza);
+						return;
+					}
+
+					/* User Directory */
+					if (Stanza.GetAttribute("to").Equals("users." + GetServerName())) {
+						iq.SetAttribute("type", "result");
+						CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#info");
+						CXMPPStanza &identity = query.NewChild("identity");
 						identity.SetAttribute("category", "directory");
 						identity.SetAttribute("type", "user");
 						identity.SetAttribute("name", "IRC Users");
 						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/disco#info");
 						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/disco#items");
-						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/muc");
 						query.NewChild("feature").SetAttribute("var", "vcard-temp");
+						query.NewChild("feature").SetAttribute("var", "jabber:iq:search");
+						query.NewChild("feature").SetAttribute("var", "jabber:iq:time");
+						query.NewChild("feature").SetAttribute("var", "jabber:iq:version");
+
+						Write(iq, &Stanza);
+						return;
+					}
+
+					/* Chatroom Directory */
+					if (Stanza.GetAttribute("to").Equals("channels." + GetServerName())) {
+						iq.SetAttribute("type", "result");
+						CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#info");
+						CXMPPStanza &identity = query.NewChild("identity");
+						identity.SetAttribute("category", "conference");
+						identity.SetAttribute("type", "text");
+						identity.SetAttribute("name", "IRC Channels");
+						identity = query.NewChild("identity");
+						identity.SetAttribute("category", "directory");
+						identity.SetAttribute("type", "chatroom");
+						identity.SetAttribute("name", "IRC Channels");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/disco#info");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/disco#items");
+						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/muc");
+						query.NewChild("feature").SetAttribute("var", "jabber:iq:search");
+						query.NewChild("feature").SetAttribute("var", "jabber:iq:time");
+						query.NewChild("feature").SetAttribute("var", "jabber:iq:version");
 
 						Write(iq, &Stanza);
 						return;
@@ -460,7 +553,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 								CXMPPStanza &query = iq.NewChild("query", "http://jabber.org/protocol/disco#info");
 								CXMPPStanza &identity = query.NewChild("identity");
 								identity.SetAttribute("category", "conference");
-								identity.SetAttribute("type", "irc");
+								identity.SetAttribute("type", "text");
 								identity.SetAttribute("name", channel->GetName() + " on " + network->GetName());
 								query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/muc");
 								query.NewChild("feature").SetAttribute("var", "muc_nonanonymous");
