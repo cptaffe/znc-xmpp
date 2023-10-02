@@ -89,7 +89,8 @@ void CXMPPClient::Presence(const CXMPPJID &from, const CString &type, const CStr
 		presence.SetAttribute("type", type);
 	if (!status.empty())
 		presence.NewChild("status").NewChild().SetText(status);
-	presence.NewChild("x", "vcard-temp:x:update").NewChild("photo");
+	/* Hash stolen from iChat vCard update */
+	presence.NewChild("x", "vcard-temp:x:update").NewChild("photo").NewChild().SetText("341f80f531fbce7a0441b5983e2ebf9fa84868d0");
 
 	Write(presence, pStanza);
 }
