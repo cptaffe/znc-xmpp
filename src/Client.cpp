@@ -591,8 +591,45 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 						// Add yourself
 						CXMPPStanza &item = query.NewChild("item");
+						item.SetAttribute("subscription", "to");
 						item.SetAttribute("jid", network->GetCurNick() + "!" + network->GetName() + "+irc@" + GetServerName());
 						item.SetAttribute("name", "You on " + network->GetName());
+
+						// TODO: Channels are empty now, they should be recorded at the user level not at the client level.
+						std::multimap<CString, CChan *> contacts;
+						for (const auto &entry : m_sChannels) {
+							CXMPPJID jid(entry.second);
+
+							if (!jid.GetIRCNetwork().Equals(network->GetName()))
+								continue;
+
+							CChan *channel = network->FindChan(jid.GetIRCChannel());
+							if (!channel)
+								continue;
+
+							for (const auto &entry : channel->GetNicks()) {
+								const CNick &nick = entry.second;
+
+								if (nick.GetNick().Equals(network->GetCurNick()))
+									continue;
+
+								contacts.emplace(nick.GetNick(), channel);
+							}
+						}
+
+						for (std::multimap<CString, CChan *>::iterator  iter = contacts.begin(); iter != contacts.end();) {
+							const CString &nick = iter->first;
+							auto range = contacts.equal_range(nick);
+							std::multimap<CString, CChan *>::iterator riter;
+							for (riter = range.first;  riter != range.second;  ++riter) {
+								CXMPPStanza &item = query.NewChild("item");
+								item.SetAttribute("subscription", "to");
+								item.SetAttribute("jid", nick + "!" + network->GetName() + "+irc@" + GetServerName());
+								item.SetAttribute("name", nick);
+								item.NewChild("group").NewChild().SetText(to.GetIRCChannel() + " on " + to.GetIRCNetwork());
+							}
+							iter = riter;
+						}
 					}
 
 					Write(iq, &Stanza);
@@ -760,6 +797,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 		if (!Stanza.HasAttribute("type")) {
 			if (!Stanza.HasAttribute("to")) {
+				/* Initial presence */
 				CXMPPStanza *pPriority = Stanza.GetChildByName("priority");
 				if (pPriority) {
 					CXMPPStanza *pPriorityText = pPriority->GetTextChild();
@@ -780,6 +818,8 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 				}
 
 				Write(presence, &Stanza);
+
+				// Send presence for user in channels, nicks in channels, missed messages
 				return;
 			} else {
 				// channel join
@@ -862,6 +902,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 	DEBUG("XMPPClient unsupported stanza [" << Stanza.GetName() << "]");
 }
 
+// TODO: Support multiple channels so nick presence is de-duplicated when logging back in.
 void CXMPPClient::JoinChannel(const CChan *channel, const CXMPPJID &to, int maxStanzas) {
 	const CIRCNetwork *network = channel->GetNetwork();
 	std::map<CString, CNick> nicks = channel->GetNicks();
