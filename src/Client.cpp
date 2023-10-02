@@ -365,6 +365,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						identity.SetAttribute("type", "im");
 						identity.SetAttribute("name", "XMPP ZNC Module");
 						/* IRC Gateway */
+						identity = query.NewChild("identity");
 						identity.SetAttribute("category", "gateway");
 						identity.SetAttribute("type", "irc");
 						identity.SetAttribute("name", "XMPP ZNC Module");
@@ -426,7 +427,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						CXMPPStanza &identity = query.NewChild("identity");
 						identity.SetAttribute("category", "account");
 						identity.SetAttribute("type", "registered");
-						query.NewChild("identity");
+						identity = query.NewChild("identity");
 						identity.SetAttribute("category", "pubsub");
 						identity.SetAttribute("type", "pep");
 						query.NewChild("feature").SetAttribute("var", "http://jabber.org/protocol/disco#info");
