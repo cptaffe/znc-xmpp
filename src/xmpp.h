@@ -14,6 +14,7 @@ class CXMPPStanza;
 
 class CXMPPChannel {
 public:
+	CXMPPChannel() {}
 	CXMPPChannel(const CXMPPJID &jid, CChan *const &pChan) {
 		m_Jid = jid;
 		m_pChan = pChan;
