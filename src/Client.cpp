@@ -780,14 +780,6 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 				}
 
 				Write(presence, &Stanza);
-
-				// Send presence for user in channels, nicks in channels, missed messages
-				for (const auto &entry : GetModule()->GetChannels(m_pUser)) {
-					const CXMPPJID &jid = entry.second.GetJID();
-					CChan *const &channel = entry.second.GetChannel();
-
-					JoinChannel(channel, jid);
-				}
 				return;
 			} else {
 				// channel join
