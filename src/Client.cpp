@@ -359,19 +359,20 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 								continue;
 
 							// Enumerate channels
-							std::set<CString> nicks;
+							std::set<CString> unicks;
 							const std::vector<CChan*> &channels = network->GetChans();
 							for (const auto &channel : channels) {
 								if (!channel->IsOn())
 									continue;
 
-								for (const auto &entry : channel->GetNicks()) {
-									nicks.insert(entry.second.GetNick());
+								const std::map<CString, CNick> &nicks = channel->GetNicks();
+								for (const auto &entry : nicks) {
+									unicks.insert(entry.second.GetNick());
 								}
 							}
 
 							// Present each unique nick on the network as a user
-							for (const auto &nick : nicks) {
+							for (const auto &nick : unicks) {
 								// JID grammar: https://xmpp.org/extensions/xep-0029.html#sect-idm45406366945648
 								CString jid = nick + "!" + network->GetName() + "+irc@" + GetServerName();
 								CString name = nick + " on " + network->GetName();
@@ -505,20 +506,20 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						const CNick *nick;
 						for (const auto &entry : GetModule()->GetChannels(m_pUser)) {
 							const CXMPPJID &jid = entry.second.GetJID();
-							const CChan *const &channel = entry.second.GetChannel();
+							const CChan *channel = entry.second.GetChannel();
 
 							if (!channel) {
 								Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC channel in network");
 								return;
 							}
 
-							std::map<CString, CNick> nicks = channel->GetNicks();
-							std::map<CString, CNick>::const_iterator it = nicks.find(to.GetIRCUser());
-							if (it == nicks.end()) {
-								Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC nick " + to.GetIRCUser() + " in network " + to.GetIRCNetwork());
-								return;
-							}
-							nick = &it->second;
+							nick = channel->FindNick(to.GetIRCUser());
+							if (nick)
+								break;
+						}
+						if (!nick) {
+							Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC nick " + to.GetIRCUser() + " in network " + to.GetIRCNetwork());
+							return;
 						}
 
 						iq.SetAttribute("type", "result");
@@ -868,7 +869,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 // TODO: Support multiple channels so nick presence is de-duplicated when logging back in.
 void CXMPPClient::JoinChannel(CChan *const &channel, const CXMPPJID &to, int maxStanzas) {
 	const CIRCNetwork *network = channel->GetNetwork();
-	std::map<CString, CNick> nicks = channel->GetNicks();
+	const std::map<CString, CNick> &nicks = channel->GetNicks();
 	for (const auto &entry : nicks) {
 		const CNick &nick = entry.second;
 
