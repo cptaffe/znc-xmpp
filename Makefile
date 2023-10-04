@@ -1,5 +1,5 @@
 CXX := clang++
-CXXFLAGS := -I/usr/include/libxml2 -fPIC
+CXXFLAGS := -I/usr/include/libxml2 -fPIC -g
 LIBS := -lxml2
 
 SRCS := Stanza.cpp Socket.cpp Client.cpp Listener.cpp JID.cpp xmpp.cpp
