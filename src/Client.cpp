@@ -512,11 +512,13 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 								return;
 							}
 
-							nick = channel->FindNick(to.GetIRCUser());
-						}
-						if (!nick) {
-							Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC nick " + to.GetIRCUser() + " in network " + to.GetIRCNetwork());
-							return;
+							std::map<CString, CNick> nicks = channel->GetNicks();
+							std::map<CString, CNick>::const_iterator it = nicks.find(to.GetIRCUser());
+							if (it == nicks.end()) {
+								Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC nick " + to.GetIRCUser() + " in network " + to.GetIRCNetwork());
+								return;
+							}
+							nick = &it->second;
 						}
 
 						iq.SetAttribute("type", "result");
