@@ -70,9 +70,8 @@ void CXMPPModule::ClientConnected(CXMPPClient &Client) {
 }
 
 void CXMPPModule::ClientDisconnected(CXMPPClient &Client) {
-	std::vector<CXMPPClient*>::iterator it;
-	for (const auto &pClient : m_vClients) {
-		if (pClient == &Client) {
+	for (std::vector<CXMPPClient*>::iterator it = m_vClients.begin(); it != m_vClients.end(); ++it) {
+		if (*it == &Client) {
 			m_vClients.erase(it);
 			break;
 		}
@@ -80,7 +79,6 @@ void CXMPPModule::ClientDisconnected(CXMPPClient &Client) {
 }
 
 CXMPPClient* CXMPPModule::Client(CUser& user, CString sResource) const {
-	std::vector<CXMPPClient*>::const_iterator it;
 	for (const auto &pClient : m_vClients) {
 		if (pClient->GetUser() == &user && sResource.Equals(pClient->GetResource())) {
 			return pClient;
