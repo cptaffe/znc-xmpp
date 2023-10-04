@@ -28,7 +28,8 @@ protected:
 		// TODO: Ensure this doesn't corrupt the stream
 		for (std::vector<CXMPPClient *>::const_iterator iter = clients.begin(); iter != clients.end(); ++iter) {
 			CXMPPClient *client = *iter;
-			client->Write(" ");
+			if (client->IsConnected())
+				client->Write(" ");
 		}
 	}
 };
