@@ -255,8 +255,8 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 				CString sUsername = "unknown";
 
 				if (pUsername && pPassword) {
-					sUsername = pUsername->GetText().c_str();
-					CString sPassword = pPassword->GetText().c_str();
+					sUsername = pUsername->GetText();
+					CString sPassword = pPassword->GetText();
 
 					CUser *pUser = CZNC::Get().FindUser(sUsername);
 
@@ -266,7 +266,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 						m_pUser = pUser;
 						if (pResource) {
-							m_sResource = pResource->GetText().c_str();
+							m_sResource = pResource->GetText();
 						}
 						DEBUG("XMPPClient jabber:iq:auth for [" << sUsername << "] success.");
 
@@ -721,36 +721,32 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 			CXMPPStanza *pBody = Stanza.GetChildByName("body");
 			if (pBody) {
-				CXMPPStanza *pBodyText = pBody->GetTextChild();
-				if (pBodyText) {
-					CString body = pBodyText->GetText().c_str();
+				CString body = pBody->GetAllText();
+				CIRCNetwork *network = m_pUser->FindNetwork(networkName);
+				if (network) {
+					CMessage message;
+					message.SetNick(network->GetIRCNick());
+					message.SetCommand("PRIVMSG");
+					message.SetParam(0, targetName);
+					message.SetParam(1, body);
 
-					CIRCNetwork *network = m_pUser->FindNetwork(networkName);
-					if (network) {
-						CMessage message;
-						message.SetNick(network->GetIRCNick());
-						message.SetCommand("PRIVMSG");
-						message.SetParam(0, targetName);
-						message.SetParam(1, body);
+					network->PutIRC(message);
+					network->PutUser(message);
 
-						network->PutIRC(message);
-						network->PutUser(message);
-
-						if (Stanza.GetAttribute("type").Equals("groupchat")) {
-							CXMPPStanza message("message");
-							message.SetAttribute("type", "groupchat");
-							CXMPPJID nick = GetModule()->GetChannels(m_pUser)[to.GetUser()].GetJID();
-							if (!nick.IsBlank()) {
-								message.SetAttribute("from", nick.ToString());
-							}
-							message.SetAttribute("to", to.ToString());
-							message.NewChild("body").NewChild().SetText(body);
-
-							Write(message, &Stanza);
+					if (Stanza.GetAttribute("type").Equals("groupchat")) {
+						CXMPPStanza message("message");
+						message.SetAttribute("type", "groupchat");
+						CXMPPJID nick = GetModule()->GetChannels(m_pUser)[to.GetUser()].GetJID();
+						if (!nick.IsBlank()) {
+							message.SetAttribute("from", nick.ToString());
 						}
+						message.SetAttribute("to", to.ToString());
+						message.NewChild("body").NewChild().SetText(body);
 
-						return;
+						Write(message, &Stanza);
 					}
+
+					return;
 				}
 			}
 		}

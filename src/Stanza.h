@@ -34,6 +34,7 @@ public:
 
 	bool SetText(CString sText);
 	CString GetText() const;
+	CString GetAllText() const;
 
 	CString GetData() const { return m_sData; }
 	void SetData(CString sData) { m_sData = sData; }

@@ -94,6 +94,17 @@ CString CXMPPStanza::GetText() const {
 	return m_sData;
 }
 
+CString CXMPPStanza::GetAllText() const {
+	CString text;
+	for (const auto &pChild : m_vChildren) {
+		if (pChild->IsText()) {
+			text += pChild->GetText();
+		}
+	}
+
+	return text;
+}
+
 void CXMPPStanza::SetAttributes(const xmlChar **attrs) {
 	if (!IsTag()) {
 		return;
