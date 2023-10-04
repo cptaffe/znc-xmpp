@@ -12,6 +12,21 @@
 class CXMPPClient;
 class CXMPPStanza;
 
+class CXMPPChannel {
+public:
+	CXMPPChannel(const CXMPPJID &jid, CChan *const &pChan) {
+		m_Jid = jid;
+		m_pChan = pChan;
+	}
+
+	CXMPPJID GetJID() const { return m_Jid; }
+	CChan *GetChannel() const { return m_pChan; }
+
+protected:
+	CXMPPJID m_Jid;
+	CChan *m_pChan;
+};
+
 class CXMPPModule : public CModule {
 public:
 	MODCONSTRUCTOR(CXMPPModule) {};
@@ -28,6 +43,9 @@ public:
 
 	CString GetServerName() const { return m_sServerName; }
 	bool IsTLSAvailible() const;
+	std::map<CString, CXMPPChannel> &GetChannels(CUser *pUser) {
+		return m_vUserChannels.at(pUser);
+	}
 
 	void SendStanza(CXMPPStanza &Stanza);
 
@@ -39,6 +57,7 @@ public:
 	virtual CModule::EModRet OnKickMessage(CTextMessage &Message);
 protected:
 	std::vector<CXMPPClient*> m_vClients;
+	std::map<CUser *, std::map<CString, CXMPPChannel>> m_vUserChannels;
 	CString m_sServerName;
 };
 

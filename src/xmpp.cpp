@@ -194,13 +194,13 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 			continue;
 
 		// Check that this client is in the channel
-		CString jid = client->GetChannels()[from.GetUser()];
-		if (jid.empty())
+		CXMPPJID jid = GetChannels(user)[from.GetUser()].GetJID();
+		if (jid.IsBlank())
 			continue;
 
 		// self messages
 		if (!iq.HasAttribute("from")) {
-			iq.SetAttribute("from", jid);
+			iq.SetAttribute("from", jid.ToString());
 		}
 
 		iq.SetAttribute("to", client->GetJID());
@@ -262,8 +262,8 @@ CModule::EModRet CXMPPModule::OnJoinMessage(CTextMessage& message) {
 			continue;
 
 		// Check that this client is in the channel
-		CString jid = client->GetChannels()[from.GetUser()];
-		if (jid.empty())
+		CXMPPJID jid = GetChannels(user)[from.GetUser()].GetJID();
+		if (jid.IsBlank())
 			continue;
 
 		client->ChannelPresence(from, jid);
@@ -291,8 +291,8 @@ CModule::EModRet CXMPPModule::OnPartMessage(CTextMessage& message) {
 			continue;
 
 		// Check that this client is in the channel
-		CString jid = client->GetChannels()[from.GetUser()];
-		if (jid.empty())
+		CXMPPJID jid = GetChannels(user)[from.GetUser()].GetJID();
+		if (jid.IsBlank())
 			continue;
 
 		client->ChannelPresence(from, jid, "unavailable", message.GetParam(0));
@@ -321,8 +321,8 @@ CModule::EModRet CXMPPModule::OnQuitMessage(CTextMessage& message, const std::ve
 			CXMPPJID from(channel->GetName() + "!" + network->GetName() + "+irc", GetServerName(), nick.GetNick());
 
 			// Check that this client is in the channel
-			CString jid = client->GetChannels()[from.GetUser()];
-			if (jid.empty())
+			CXMPPJID jid = GetChannels(user)[from.GetUser()].GetJID();
+			if (jid.IsBlank())
 				continue;
 
 			client->ChannelPresence(from, jid, "unavailable", message.GetParam(0));

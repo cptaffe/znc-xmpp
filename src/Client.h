@@ -24,7 +24,6 @@ public:
 	CString GetResource() const { return m_sResource; }
 	int GetPriority() const { return m_uiPriority; }
 	CString GetJID() const;
-	std::map<CString, CString> GetChannels() const { return m_sChannels; };
 
 	bool Write(CString sData);
 	bool Write(const CXMPPStanza& Stanza);
@@ -37,13 +36,12 @@ public:
 	virtual void StreamStart(CXMPPStanza &Stanza);
 	virtual void ReceiveStanza(CXMPPStanza &Stanza);
 
-	void JoinChannel(const CChan *channel, const CXMPPJID &to, int maxStanzas = 25);
+	void JoinChannel(CChan *const &channel, const CXMPPJID &to, int maxStanzas = 25);
 
 protected:
 	CUser *m_pUser;
 
 	CString m_sResource;
 	int m_uiPriority;
-	std::map<CString, CString> m_sChannels;
 };
 

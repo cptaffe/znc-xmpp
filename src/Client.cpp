@@ -502,20 +502,17 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						}
 
 						/* Traverse all channels this client is connected to on this network to confirm the user exists */
-						CNick *nick;
-						for (const auto &entry : m_sChannels) {
-							CXMPPJID jid(entry.second);
+						const CNick *nick;
+						for (const auto &entry : GetModule()->GetChannels(m_pUser)) {
+							const CXMPPJID &jid = entry.second.GetJID();
+							const CChan *const &channel = entry.second.GetChannel();
 
-							if (!jid.GetIRCNetwork().Equals(network->GetName()))
-								continue;
-
-							CChan *channel = network->FindChan(jid.GetIRCChannel());
 							if (!channel) {
 								Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC channel in network");
 								return;
 							}
 
-							CNick *nick = channel->FindNick(to.GetIRCUser());
+							nick = channel->FindNick(to.GetIRCUser());
 						}
 						if (!nick) {
 							Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC nick " + to.GetIRCUser() + " in network " + to.GetIRCNetwork());
@@ -593,43 +590,8 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						CXMPPStanza &item = query.NewChild("item");
 						item.SetAttribute("subscription", "to");
 						item.SetAttribute("jid", network->GetCurNick() + "!" + network->GetName() + "+irc@" + GetServerName());
-						item.SetAttribute("name", "You on " + network->GetName());
-
-						// TODO: Channels are empty now, they should be recorded at the user level not at the client level.
-						std::multimap<CString, CChan *> contacts;
-						for (const auto &entry : m_sChannels) {
-							CXMPPJID jid(entry.second);
-
-							if (!jid.GetIRCNetwork().Equals(network->GetName()))
-								continue;
-
-							CChan *channel = network->FindChan(jid.GetIRCChannel());
-							if (!channel)
-								continue;
-
-							for (const auto &entry : channel->GetNicks()) {
-								const CNick &nick = entry.second;
-
-								if (nick.GetNick().Equals(network->GetCurNick()))
-									continue;
-
-								contacts.emplace(nick.GetNick(), channel);
-							}
-						}
-
-						for (std::multimap<CString, CChan *>::iterator  iter = contacts.begin(); iter != contacts.end();) {
-							const CString &nick = iter->first;
-							auto range = contacts.equal_range(nick);
-							std::multimap<CString, CChan *>::iterator riter;
-							for (riter = range.first;  riter != range.second;  ++riter) {
-								CXMPPStanza &item = query.NewChild("item");
-								item.SetAttribute("subscription", "to");
-								item.SetAttribute("jid", nick + "!" + network->GetName() + "+irc@" + GetServerName());
-								item.SetAttribute("name", nick);
-								item.NewChild("group").NewChild().SetText(to.GetIRCChannel() + " on " + to.GetIRCNetwork());
-							}
-							iter = riter;
-						}
+						item.SetAttribute("name", m_pUser->GetRealName());
+						item.SetAttribute("group", network->GetName());
 					}
 
 					Write(iq, &Stanza);
@@ -774,9 +736,9 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						if (Stanza.GetAttribute("type").Equals("groupchat")) {
 							CXMPPStanza message("message");
 							message.SetAttribute("type", "groupchat");
-							CString nick = m_sChannels[to.GetUser()];
-							if (!nick.empty()) {
-								message.SetAttribute("from", nick);
+							CXMPPJID nick = GetModule()->GetChannels(m_pUser)[to.GetUser()].GetJID();
+							if (!nick.IsBlank()) {
+								message.SetAttribute("from", nick.ToString());
 							}
 							message.SetAttribute("to", to.ToString());
 							message.NewChild("body").NewChild().SetText(body);
@@ -820,6 +782,12 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 				Write(presence, &Stanza);
 
 				// Send presence for user in channels, nicks in channels, missed messages
+				for (const auto &entry : GetModule()->GetChannels(m_pUser)) {
+					const CXMPPJID &jid = entry.second.GetJID();
+					CChan *const &channel = entry.second.GetChannel();
+
+					JoinChannel(channel, jid);
+				}
 				return;
 			} else {
 				// channel join
@@ -879,13 +847,14 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					/* Unknown, ignore */
 					return;
 				}
-				CString jid = m_sChannels[to.GetUser()];
-				if (jid.empty() || !CXMPPJID(jid).Equals(to)) {
+				auto &channels = GetModule()->GetChannels(m_pUser);
+				CXMPPJID jid = channels[to.GetUser()].GetJID();
+				if (jid.IsBlank() || !jid.Equals(to)) {
 					/* Not joined, ignore */
 					return;
 				}
 
-				m_sChannels.erase(to.GetUser());
+				channels.erase(to.GetUser());
 				CXMPPJID from = to;
 				to.SetResource("");
 				ChannelPresence(from, jid, "unavailable");
@@ -903,7 +872,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 }
 
 // TODO: Support multiple channels so nick presence is de-duplicated when logging back in.
-void CXMPPClient::JoinChannel(const CChan *channel, const CXMPPJID &to, int maxStanzas) {
+void CXMPPClient::JoinChannel(CChan *const &channel, const CXMPPJID &to, int maxStanzas) {
 	const CIRCNetwork *network = channel->GetNetwork();
 	std::map<CString, CNick> nicks = channel->GetNicks();
 	for (const auto &entry : nicks) {
@@ -959,7 +928,7 @@ void CXMPPClient::JoinChannel(const CChan *channel, const CXMPPJID &to, int maxS
 	AddDelay(message, channelJID.ToString(), (time_t)channel->GetTopicDate());
 	Write(message);
 
-	m_sChannels.emplace(to.GetUser(), to.ToString());
+	GetModule()->GetChannels(m_pUser).emplace(to.GetUser(), CXMPPChannel(to, channel));
 
 	// Finally, send the non-channel presence of channel members
 	for (const auto &entry : nicks) {
