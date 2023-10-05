@@ -882,7 +882,7 @@ void CXMPPClient::JoinChannel(CChan *const &channel, const CXMPPJID &to, int max
 	const CBuffer &buffer = channel->GetBuffer();
 	if (buffer.Size()) {
 		std::deque<CXMPPBufLine> history;
-		for (size_t i = buffer.Size()-1; i >= 0; i--) {
+		for (size_t i = buffer.Size(); i-- > 0;) {
 			const CXMPPBufLine &line = CXMPPBufLine(buffer.GetBufLine(i));
 			if (!line.GetCommand().Equals("PRIVMSG"))
 				continue;
