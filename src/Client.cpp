@@ -513,7 +513,8 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 								return;
 							}
 
-							nick = channel->FindNick(to.GetIRCUser());
+							const CString user = to.GetIRCUser();
+							nick = channel->FindNick(user);
 							if (nick)
 								break;
 						}
