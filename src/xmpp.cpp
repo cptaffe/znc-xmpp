@@ -155,11 +155,9 @@ void CXMPPModule::SendStanza(CXMPPStanza &Stanza) {
 			error.SetAttribute("type", "cancel");
 
 			if (to.IsLocal(*this)) {
-				CXMPPStanza& unavailable = error.NewChild("service-unavailable",
-											"urn:ietf:params:xml:ns:xmpp-stanzas");
+				error.NewChild("service-unavailable", "urn:ietf:params:xml:ns:xmpp-stanzas");
 			} else {
-				CXMPPStanza &notFound = error.NewChild("remote-server-not-found",
-											"urn:ietf:params:xml:ns:xmpp-stanzas");
+				error.NewChild("remote-server-not-found", "urn:ietf:params:xml:ns:xmpp-stanzas");
 			}
 
 			pClient->Write(errorStanza);
@@ -334,6 +332,32 @@ CModule::EModRet CXMPPModule::OnQuitMessage(CTextMessage& message, const std::ve
 }
 
 CModule::EModRet CXMPPModule::OnKickMessage(CTextMessage& message) {
+	/* Send unavailable status to channel members */
+	CIRCNetwork *network = message.GetNetwork();
+	CChan *channel = message.GetChan();
+	CString nick = message.GetTarget();
+	CString status = message.GetText();
+
+	if (!network || !channel) {
+		return CModule::CONTINUE;
+	}
+
+	CXMPPJID from(channel->GetName() + "!" + network->GetName() + "+irc", GetServerName(), nick);
+	CXMPPJID jid(nick + "!" + network->GetName() + "+irc", GetServerName());
+
+	for (const auto &client : m_vClients) {
+		CUser *user = client->GetUser();
+		if (!user || !user->GetUsername().Equals(network->GetUser()->GetUsername()))
+			continue;
+
+		// Check that this client is in the channel
+		CXMPPJID jid = GetChannels(user)[from.GetUser()].GetJID();
+		if (jid.IsBlank())
+			continue;
+
+		client->ChannelPresence(from, jid, "unavailable", status, {"307"});
+	}
+
 	return CModule::CONTINUE;
 }
 
