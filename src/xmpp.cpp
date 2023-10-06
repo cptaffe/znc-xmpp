@@ -95,7 +95,6 @@ CXMPPClient* CXMPPModule::Client(const CXMPPJID& jid, bool bAcceptNegative) cons
 
 	CXMPPClient *pCurrent = NULL;
 
-	std::vector<CXMPPClient*>::const_iterator it;
 	for (const auto &pClient : m_vClients) {
 		if (pClient->GetUser() && pClient->GetUser()->GetUserName().Equals(jid.GetUser())) {
 			if (!jid.GetResource().empty() && jid.GetResource().Equals(pClient->GetResource())) {
