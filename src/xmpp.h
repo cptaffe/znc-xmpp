@@ -32,8 +32,8 @@ class CXMPPModule : public CModule {
 public:
 	MODCONSTRUCTOR(CXMPPModule) {};
 
-	virtual bool OnLoad(const CString& sArgs, CString& sMessage);
-	virtual EModRet OnDeleteUser(CUser& User);
+	virtual bool OnLoad(const CString& sArgs, CString& sMessage) override;
+	virtual EModRet OnDeleteUser(CUser& User) override;
 
 	void ClientConnected(CXMPPClient &Client);
 	void ClientDisconnected(CXMPPClient &Client);
