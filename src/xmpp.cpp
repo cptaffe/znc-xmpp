@@ -240,14 +240,14 @@ CModule::EModRet CXMPPModule::OnPrivTextMessage(CTextMessage& message) {
 	return CModule::CONTINUE;
 }
 
-CModule::EModRet CXMPPModule::OnJoinMessage(CTextMessage& message) {
+void CXMPPModule::OnJoinMessage(CJoinMessage& message) {
 	/* Send presence to channel members */
 	CIRCNetwork *network = message.GetNetwork();
 	CChan *channel = message.GetChan();
 	CNick &nick = message.GetNick();
 
 	if (!network || !channel) {
-		return CModule::CONTINUE;
+		return;
 	}
 
 	CXMPPJID from(channel->GetName() + "!" + network->GetName() + "+irc", GetServerName(), nick.GetNick());
@@ -266,17 +266,17 @@ CModule::EModRet CXMPPModule::OnJoinMessage(CTextMessage& message) {
 		client->ChannelPresence(from, jid);
 	}
 
-	return CModule::CONTINUE;
+	return;
 }
 
-CModule::EModRet CXMPPModule::OnPartMessage(CTextMessage& message) {
+void CXMPPModule::OnPartMessage(CPartMessage & message) {
 	/* Send unavailable status to channel members */
 	CIRCNetwork *network = message.GetNetwork();
 	CChan *channel = message.GetChan();
 	CNick &nick = message.GetNick();
 
 	if (!network || !channel) {
-		return CModule::CONTINUE;
+		return;
 	}
 
 	CXMPPJID from(channel->GetName() + "!" + network->GetName() + "+irc", GetServerName(), nick.GetNick());
@@ -292,19 +292,19 @@ CModule::EModRet CXMPPModule::OnPartMessage(CTextMessage& message) {
 		if (jid.IsBlank())
 			continue;
 
-		client->ChannelPresence(from, jid, "unavailable", message.GetParam(0));
+		client->ChannelPresence(from, jid, "unavailable", message.GetReason());
 	}
 
-	return CModule::CONTINUE;
+	return;
 }
 
-CModule::EModRet CXMPPModule::OnQuitMessage(CTextMessage& message, const std::vector<CChan*> &vChans) {
+void CXMPPModule::OnQuitMessage(CQuitMessage &message, const std::vector<CChan*> &vChans) {
 		/* Send unavailable status to channel members */
 	CIRCNetwork *network = message.GetNetwork();
 	CNick &nick = message.GetNick();
 
 	if (!network) {
-		return CModule::CONTINUE;
+		return;
 	}
 
 	CXMPPJID jid(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
@@ -328,10 +328,10 @@ CModule::EModRet CXMPPModule::OnQuitMessage(CTextMessage& message, const std::ve
 		client->Presence(jid, "unavailable", message.GetParam(0));
 	}
 
-	return CModule::CONTINUE;
+	return;
 }
 
-CModule::EModRet CXMPPModule::OnKickMessage(CTextMessage& message) {
+void CXMPPModule::OnKickMessage(CKickMessage &message) {
 	/* Send unavailable status to channel members */
 	CIRCNetwork *network = message.GetNetwork();
 	CChan *channel = message.GetChan();
@@ -339,7 +339,7 @@ CModule::EModRet CXMPPModule::OnKickMessage(CTextMessage& message) {
 	CString status = message.GetText();
 
 	if (!network || !channel) {
-		return CModule::CONTINUE;
+		return;
 	}
 
 	CXMPPJID from(channel->GetName() + "!" + network->GetName() + "+irc", GetServerName(), nick);
@@ -358,7 +358,7 @@ CModule::EModRet CXMPPModule::OnKickMessage(CTextMessage& message) {
 		client->ChannelPresence(from, jid, "unavailable", status, {"307"});
 	}
 
-	return CModule::CONTINUE;
+	return;
 }
 
 GLOBALMODULEDEFS(CXMPPModule, "XMPP support for ZNC");
