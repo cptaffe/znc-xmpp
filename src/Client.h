@@ -27,7 +27,7 @@ public:
 
 	bool Write(CString sData);
 	bool Write(const CXMPPStanza& Stanza);
-	bool Write(CXMPPStanza& Stanza, const CXMPPStanza *pStanza);
+	bool Write(CXMPPStanza& Stanza, const CXMPPStanza *pStanza = nullptr);
 
 	void Error(const CString &tag, const CString &type, const CString &code = "", const CXMPPStanza *pStanza = nullptr, const CString &text = "");
 	void Presence(const CXMPPJID &from, const CString &type = "", const CString &status = "",  const CXMPPStanza *pStanza = nullptr);

@@ -780,6 +780,20 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 				}
 
 				Write(presence, &Stanza);
+
+				/* Invite to all channels */
+				for (const auto &network : m_pUser->GetNetworks()) {
+					for (const auto &channel : network->GetChans()) {
+						CXMPPStanza message("message");
+						message.SetAttribute("from", channel->GetName() + "!" + network->GetName() + "+irc@" + GetServerName());
+						message.SetAttribute("id", "znc_" + CString::RandomString(8));
+						CXMPPStanza &invite = message.NewChild("x", "http://jabber.org/protocol/muc#user").NewChild("invite");
+						invite.SetAttribute("from", GetServerName());
+						invite.NewChild("reason").NewChild().SetText(m_pUser->GetNick() + " is joined to " + channel->GetName() + " on " + network->GetName());
+
+						Write(message);
+					}
+				}
 				return;
 			} else {
 				// channel join
