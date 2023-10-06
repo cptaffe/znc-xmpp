@@ -810,6 +810,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 				CXMPPStanza *pX = Stanza.GetChildByName("x", "http://jabber.org/protocol/muc");
 				if (pX) {
 					// TODO: Broadcast to any other XMPP clients in this room
+					// TODO: we need a per-client channel list
 
 					if (!(to.IsLocal(*GetModule()) && to.IsIRCChannel())) {
 						Error("item-not-found", "cancel", "404", &Stanza, "Channel is not on this server or is not an IRC channel");
@@ -821,14 +822,22 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC network");
 						return;
 					}
-					// TODO: connect if unconnected
 
 					CChan *channel = network->FindChan(to.GetIRCChannel());
 					if (!channel) {
+						// Add the channel to the network
+						channel = new CChan(to.GetIRCChannel(), network, false);
+						network->AddChan(channel);
+					}
+					if (channel->IsDisabled()) {
 						Error("item-not-found", "cancel", "404", &Stanza, "Unknown IRC channel");
 						return;
 					}
-					// TODO: join if not joined
+					if (!channel->IsOn()) {
+						// Join the channel
+						std::set<CChan *> joins{channel};
+						network->JoinChans(joins);
+					}
 
 					// Room history
 					int maxStanzas = 25;
