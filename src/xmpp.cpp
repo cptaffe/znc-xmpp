@@ -366,7 +366,7 @@ CModule::EModRet CXMPPModule::OnNumericMessage(CNumericMessage &message) {
 		/* RPL_ENDOFNAMES signals that a join is finished
 		   and the topic/nicks for a channel are populated. */
 		CIRCNetwork *network = message.GetNetwork();
-		CChan *channel = message.GetChan();
+		CChan *channel = network->FindChan(message.GetParam(0));
 
 		if (!network || !channel) {
 			return CModule::CONTINUE;
