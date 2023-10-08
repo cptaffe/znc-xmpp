@@ -2,9 +2,14 @@
 
 class IRCCode{
 public:
+    IRCCode() {}
     IRCCode(unsigned int code, CString name) {
         m_Code = code;
         m_Name = name;
+    }
+    IRCCode(const IRCCode &other) {
+        m_Code = other.m_Code;
+        m_Name = other.m_Name;
     }
 
     unsigned int GetCode() const { return m_Code; }
