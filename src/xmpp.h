@@ -15,17 +15,21 @@ class CXMPPStanza;
 class CXMPPChannel {
 public:
 	CXMPPChannel() {}
-	CXMPPChannel(const CXMPPJID &jid, CChan *const &pChan) {
+	CXMPPChannel(const CXMPPJID &jid, CChan *const &pChan, int historyMaxStanzas = 25) {
 		m_Jid = jid;
 		m_pChan = pChan;
+		// Used for callback joins
+		m_historyMaxStanzas = historyMaxStanzas;
 	}
 
 	CXMPPJID GetJID() const { return m_Jid; }
 	CChan *GetChannel() const { return m_pChan; }
+	int GetHistoryMaxStanzas() { return m_historyMaxStanzas; }
 
 protected:
 	CXMPPJID m_Jid;
 	CChan *m_pChan;
+	int m_historyMaxStanzas;
 };
 
 class CXMPPModule : public CModule {

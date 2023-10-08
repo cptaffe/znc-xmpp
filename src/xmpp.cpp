@@ -381,12 +381,13 @@ CModule::EModRet CXMPPModule::OnNumericMessage(CNumericMessage &message) {
 			if (!user)
 				continue;
 
-			CXMPPJID jid = GetChannels(user)[chanuser].GetJID();
+			CXMPPChannel chan = GetChannels(user)[chanuser];
+			CXMPPJID jid = chan.GetJID();
 			if (jid.IsBlank())
 				continue;
 
 			// Finish join
-			client->JoinChannel(channel, jid);
+			client->JoinChannel(channel, jid, chan.GetHistoryMaxStanzas());
 		}
 
 		break;

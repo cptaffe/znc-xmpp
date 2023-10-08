@@ -823,6 +823,13 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						return;
 					}
 
+					// Room history
+					int maxStanzas = 25;
+					CXMPPStanza *pHistory = pX->GetChildByName("history");
+					if (pHistory && pHistory->HasAttribute("maxstanzas")) {
+						maxStanzas = pHistory->GetAttribute("maxstanzas").ToInt();
+					}
+
 					CChan *channel = network->FindChan(to.GetIRCChannel());
 					if (!channel) {
 						// Add the channel to the network
@@ -839,15 +846,8 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						network->JoinChans(joins);
 
 						DEBUG("XMPPClient finish join to " + channel->GetName() + " on " + network->GetName() + " in callback");
-						GetModule()->GetChannels(m_pUser).emplace(to.GetUser(), CXMPPChannel(to, channel));
+						GetModule()->GetChannels(m_pUser).emplace(to.GetUser(), CXMPPChannel(to, channel, maxStanzas));
 						return;
-					}
-
-					// Room history
-					int maxStanzas = 25;
-					CXMPPStanza *pHistory = pX->GetChildByName("history");
-					if (pHistory && pHistory->HasAttribute("maxstanzas")) {
-						maxStanzas = pHistory->GetAttribute("maxstanzas").ToInt();
 					}
 
 					JoinChannel(channel, to, maxStanzas);
