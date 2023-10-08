@@ -938,15 +938,18 @@ void CXMPPClient::JoinChannel(CChan *const &channel, const CXMPPJID &to, int max
 	}
 
 	// Room subject
-	CXMPPJID owner(to.GetUser(), to.GetDomain(), CNick(channel->GetTopicOwner()).GetNick());
-	CXMPPJID channelJID(to.GetUser(), GetServerName());
-	CXMPPStanza message("message");
-	message.SetAttribute("id", "znc_" + CString::RandomString(8));
-	message.SetAttribute("from", owner.ToString());
-	message.SetAttribute("type", "groupchat");
-	message.NewChild("subject").NewChild().SetText(channel->GetTopic());
-	AddDelay(message, channelJID.ToString(), (time_t)channel->GetTopicDate());
-	Write(message);
+	CString topic = channel->GetTopic();
+	if (!topic.empty()) {
+		CXMPPJID owner(to.GetUser(), to.GetDomain(), CNick(channel->GetTopicOwner()).GetNick());
+		CXMPPJID channelJID(to.GetUser(), GetServerName());
+		CXMPPStanza message("message");
+		message.SetAttribute("id", "znc_" + CString::RandomString(8));
+		message.SetAttribute("from", owner.ToString());
+		message.SetAttribute("type", "groupchat");
+		message.NewChild("subject").NewChild().SetText(topic);
+		AddDelay(message, channelJID.ToString(), (time_t)channel->GetTopicDate());
+		Write(message);
+	}
 
 	GetModule()->GetChannels(m_pUser).emplace(to.GetUser(), CXMPPChannel(to, channel));
 
