@@ -838,7 +838,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						std::set<CChan *> joins{channel};
 						network->JoinChans(joins);
 
-						// Finish the join in the RPL_ENDOFNAMES hook
+						DEBUG("XMPPClient finish join to " + channel->GetName() + " on " + network->GetName() + " in callback");
 						GetModule()->GetChannels(m_pUser).emplace(to.GetUser(), CXMPPChannel(to, channel));
 						return;
 					}
@@ -893,6 +893,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 // TODO: Support multiple channels so nick presence is de-duplicated when logging back in.
 void CXMPPClient::JoinChannel(CChan *const &channel, const CXMPPJID &to, int maxStanzas) {
 	const CIRCNetwork *network = channel->GetNetwork();
+	DEBUG("XMPPClient sending join to " + channel->GetName() + " on " + network->GetName());
 	const std::map<CString, CNick> &nicks = channel->GetNicks();
 	for (const auto &entry : nicks) {
 		const CNick &nick = entry.second;

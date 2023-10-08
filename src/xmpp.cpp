@@ -365,13 +365,14 @@ CModule::EModRet CXMPPModule::OnNumericMessage(CNumericMessage &message) {
 	case 366:
 		/* RPL_ENDOFNAMES signals that a join is finished
 		   and the topic/nicks for a channel are populated. */
-
 		CIRCNetwork *network = message.GetNetwork();
 		CChan *channel = message.GetChan();
 
 		if (!network || !channel) {
 			return CModule::CONTINUE;
 		}
+
+		DEBUG("XMPPModule finishing join to " + channel->GetName() + " on " + network->GetName());
 
 		CString chanuser = channel->GetName() + "!" + network->GetName() + "+irc";
 
