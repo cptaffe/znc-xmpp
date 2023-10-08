@@ -392,6 +392,8 @@ CModule::EModRet CXMPPModule::OnNumericMessage(CNumericMessage &message) {
 
 		break;
 	}
+
+	return CModule::CONTINUE;
 }
 
 GLOBALMODULEDEFS(CXMPPModule, "XMPP support for ZNC");
