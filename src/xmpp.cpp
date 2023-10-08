@@ -248,13 +248,15 @@ void CXMPPModule::OnJoinMessage(CJoinMessage& message) {
 	if (!network || !channel) {
 		return;
 	}
+	if (nick.NickEquals(network->GetNick()))
+		return; // ignore self-join
 
 	CXMPPJID from(channel->GetName() + "!" + network->GetName() + "+irc", GetServerName(), nick.GetNick());
 	CXMPPJID jid(nick.GetNick() + "!" + network->GetName() + "+irc", GetServerName());
 
 	for (const auto &client : m_vClients) {
 		CUser *user = client->GetUser();
-		if (!user || !user->GetUsername().Equals(network->GetUser()->GetUsername()))
+		if (network->GetUser() != user)
 			continue;
 
 		// Check that this client is in the channel
