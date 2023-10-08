@@ -837,6 +837,10 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						// Join the channel
 						std::set<CChan *> joins{channel};
 						network->JoinChans(joins);
+
+						// Finish the join in the RPL_ENDOFNAMES hook
+						GetModule()->GetChannels(m_pUser).emplace(to.GetUser(), CXMPPChannel(to, channel));
+						return;
 					}
 
 					// Room history

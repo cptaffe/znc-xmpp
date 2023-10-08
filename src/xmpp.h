@@ -50,12 +50,13 @@ public:
 
 	void SendStanza(CXMPPStanza &Stanza);
 
-	virtual CModule::EModRet OnPrivTextMessage(CTextMessage &Message) override;
-    virtual CModule::EModRet OnChanTextMessage(CTextMessage &Message) override;
-	virtual void OnJoinMessage(CJoinMessage &Message) override;
-	virtual void OnPartMessage(CPartMessage &Message) override;
-	virtual void OnQuitMessage(CQuitMessage& message, const std::vector<CChan*> &vChans) override;
-	virtual void OnKickMessage(CKickMessage &Message) override;
+	virtual CModule::EModRet OnPrivTextMessage(CTextMessage &message) override;
+    virtual CModule::EModRet OnChanTextMessage(CTextMessage &message) override;
+	virtual void OnJoinMessage(CJoinMessage &message) override;
+	virtual void OnPartMessage(CPartMessage &message) override;
+	virtual void OnQuitMessage(CQuitMessage &message, const std::vector<CChan*> &vChans) override;
+	virtual void OnKickMessage(CKickMessage &message) override;
+	virtual CModule::EModRet OnNumericMessage(CNumericMessage &message) override;
 protected:
 	std::vector<CXMPPClient*> m_vClients;
 	std::map<CUser *, std::map<CString, CXMPPChannel>> m_vUserChannels;
