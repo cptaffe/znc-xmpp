@@ -366,7 +366,7 @@ CModule::EModRet CXMPPModule::OnNumericMessage(CNumericMessage &message) {
 		/* RPL_ENDOFNAMES signals that a join is finished
 		   and the topic/nicks for a channel are populated. */
 		CIRCNetwork *network = message.GetNetwork();
-		CChan *channel = network->FindChan(message.GetParam(0));
+		CChan *channel = network->FindChan(message.GetParam(1));
 
 		if (!network || !channel) {
 			return CModule::CONTINUE;
@@ -384,7 +384,6 @@ CModule::EModRet CXMPPModule::OnNumericMessage(CNumericMessage &message) {
 			CXMPPJID jid = GetChannels(user)[chanuser].GetJID();
 			if (jid.IsBlank())
 				continue;
-
 
 			// Finish join
 			client->JoinChannel(channel, jid);
