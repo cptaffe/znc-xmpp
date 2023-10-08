@@ -13,6 +13,7 @@
 #include "Client.h"
 #include "Listener.h"
 #include "Stanza.h"
+#include "Codes.h"
 
 // Keep the socket alive
 class CXMPPSpaceJob : public CTimer {
@@ -362,9 +363,21 @@ void CXMPPModule::OnKickMessage(CKickMessage &message) {
 	return;
 }
 
+// Taken from https://www.alien.net.au/irc/irc2numerics.html
+static const CString errors[] = {
+	// starts at 400
+	"Unknown error",
+	"No such nick",
+	"No such server",
+	"No such channel",
+
+};
+
 CModule::EModRet CXMPPModule::OnNumericMessage(CNumericMessage &message) {
-	switch (message.GetCode()) {
-	case 366:
+	const IRCCode &code = IRCCode::FindCode(message.GetCode());
+	CIRCNetwork *network = message.GetNetwork();
+	CNick &nick = message.GetNick();
+	if (code.GetCode() == 366) {
 		/* RPL_ENDOFNAMES signals that a join is finished
 		   and the topic/nicks for a channel are populated. */
 		CIRCNetwork *network = message.GetNetwork();
@@ -392,7 +405,33 @@ CModule::EModRet CXMPPModule::OnNumericMessage(CNumericMessage &message) {
 			client->JoinChannel(channel, jid, chan.GetHistoryMaxStanzas());
 		}
 
-		break;
+		return CModule::CONTINUE;
+	}
+
+	/* Send error message to client as PM */
+	if (code.IsClientError() || code.IsServerError()) {
+		CXMPPStanza iq("message");
+		iq.SetAttribute("id", "znc_" + CString::RandomString(8));
+		iq.SetAttribute("type", "chat");
+		iq.SetAttribute("from", nick.GetNick() + "!" + network->GetName() + "+irc@" + GetServerName());
+		CXMPPStanza &body = iq.NewChild("body");
+		CString text;
+		for (const auto &param : message.GetParams()) {
+			if (!text.empty()) {
+				text += " ";
+			}
+			text += param;
+		}
+		body.NewChild().SetText(text);
+
+		for (const auto &client : m_vClients) {
+			CUser *user = client->GetUser();
+			if (!user || user != network->GetUser())
+				continue;
+
+			iq.SetAttribute("to", client->GetJID());
+			client->Write(iq);
+		}
 	}
 
 	return CModule::CONTINUE;
