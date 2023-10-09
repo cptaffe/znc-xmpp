@@ -191,7 +191,7 @@ CModule::EModRet CXMPPModule::OnChanTextMessage(CTextMessage& message) {
 			continue;
 
 		// Check that this client is in the channel
-		CXMPPJID jid = GetChannels(user)[from.GetUser()].GetJID();
+		CXMPPJID jid = client->GetChannels()[from.GetUser()].GetJID();
 		if (jid.IsBlank())
 			continue;
 
@@ -261,7 +261,7 @@ void CXMPPModule::OnJoinMessage(CJoinMessage& message) {
 			continue;
 
 		// Check that this client is in the channel
-		CXMPPJID jid = GetChannels(user)[from.GetUser()].GetJID();
+		CXMPPJID jid = client->GetChannels()[from.GetUser()].GetJID();
 		if (jid.IsBlank())
 			continue;
 
@@ -290,7 +290,7 @@ void CXMPPModule::OnPartMessage(CPartMessage & message) {
 			continue;
 
 		// Check that this client is in the channel
-		CXMPPJID jid = GetChannels(user)[from.GetUser()].GetJID();
+		CXMPPJID jid = client->GetChannels()[from.GetUser()].GetJID();
 		if (jid.IsBlank())
 			continue;
 
@@ -320,7 +320,7 @@ void CXMPPModule::OnQuitMessage(CQuitMessage &message, const std::vector<CChan*>
 			CXMPPJID from(channel->GetName() + "!" + network->GetName() + "+irc", GetServerName(), nick.GetNick());
 
 			// Check that this client is in the channel
-			CXMPPJID jid = GetChannels(user)[from.GetUser()].GetJID();
+			CXMPPJID jid = client->GetChannels()[from.GetUser()].GetJID();
 			if (jid.IsBlank())
 				continue;
 
@@ -353,7 +353,7 @@ void CXMPPModule::OnKickMessage(CKickMessage &message) {
 			continue;
 
 		// Check that this client is in the channel
-		CXMPPJID jid = GetChannels(user)[from.GetUser()].GetJID();
+		CXMPPJID jid = client->GetChannels()[from.GetUser()].GetJID();
 		if (jid.IsBlank())
 			continue;
 
@@ -396,7 +396,7 @@ CModule::EModRet CXMPPModule::OnNumericMessage(CNumericMessage &message) {
 			if (!user)
 				continue;
 
-			CXMPPChannel chan = GetChannels(user)[chanuser];
+			CXMPPChannel chan = client->GetChannels()[chanuser];
 			CXMPPJID jid = chan.GetJID();
 			if (jid.IsBlank())
 				continue;

@@ -24,6 +24,7 @@ public:
 	CString GetResource() const { return m_sResource; }
 	int GetPriority() const { return m_uiPriority; }
 	CString GetJID() const;
+	std::map<CString, CXMPPChannel> &GetChannels() const { return m_mChannels; }
 
 	bool Write(CString sData);
 	bool Write(const CXMPPStanza& Stanza);
@@ -43,5 +44,6 @@ protected:
 
 	CString m_sResource;
 	int m_uiPriority;
+	std::map<CString, CXMPPChannel> m_mChannels;
 };
 

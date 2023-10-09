@@ -504,7 +504,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 
 						/* Traverse all channels this client is connected to on this network to confirm the user exists */
 						const CNick *nick;
-						for (const auto &entry : GetModule()->GetChannels(m_pUser)) {
+						for (const auto &entry : GetChannels()) {
 							const CXMPPJID &jid = entry.second.GetJID();
 							const CChan *channel = entry.second.GetChannel();
 
@@ -737,7 +737,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					if (Stanza.GetAttribute("type").Equals("groupchat")) {
 						CXMPPStanza message("message");
 						message.SetAttribute("type", "groupchat");
-						CXMPPJID nick = GetModule()->GetChannels(m_pUser)[to.GetUser()].GetJID();
+						CXMPPJID nick = m_mChannels[to.GetUser()].GetJID();
 						if (!nick.IsBlank()) {
 							message.SetAttribute("from", nick.ToString());
 						}
@@ -846,7 +846,7 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 						network->JoinChans(joins);
 
 						DEBUG("XMPPClient finish join to " + channel->GetName() + " on " + network->GetName() + " in callback");
-						GetModule()->GetChannels(m_pUser).emplace(to.GetUser(), CXMPPChannel(to, channel, maxStanzas));
+						m_mChannels.emplace(to.GetUser(), CXMPPChannel(to, channel, maxStanzas));
 						return;
 					}
 
@@ -866,14 +866,13 @@ void CXMPPClient::ReceiveStanza(CXMPPStanza &Stanza) {
 					/* Unknown, ignore */
 					return;
 				}
-				auto &channels = GetModule()->GetChannels(m_pUser);
-				CXMPPJID jid = channels[to.GetUser()].GetJID();
+				CXMPPJID jid = m_mChannels[to.GetUser()].GetJID();
 				if (jid.IsBlank() || !jid.Equals(to)) {
 					/* Not joined, ignore */
 					return;
 				}
 
-				channels.erase(to.GetUser());
+				m_mChannels.erase(to.GetUser());
 				CXMPPJID from = to;
 				to.SetResource("");
 				ChannelPresence(from, jid, "unavailable");
@@ -951,7 +950,7 @@ void CXMPPClient::JoinChannel(CChan *const &channel, const CXMPPJID &to, int max
 		Write(message);
 	}
 
-	GetModule()->GetChannels(m_pUser).emplace(to.GetUser(), CXMPPChannel(to, channel));
+	m_mChannels.emplace(to.GetUser(), CXMPPChannel(to, channel));
 
 	// Finally, send the non-channel presence of channel members
 	for (const auto &entry : nicks) {

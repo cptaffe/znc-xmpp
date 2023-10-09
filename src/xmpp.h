@@ -48,9 +48,6 @@ public:
 
 	CString GetServerName() const { return m_sServerName; }
 	bool IsTLSAvailible() const;
-	std::map<CString, CXMPPChannel> &GetChannels(CUser *pUser) {
-		return m_vUserChannels[pUser];
-	}
 
 	void SendStanza(CXMPPStanza &Stanza);
 
@@ -63,7 +60,6 @@ public:
 	virtual CModule::EModRet OnNumericMessage(CNumericMessage &message) override;
 protected:
 	std::vector<CXMPPClient*> m_vClients;
-	std::map<CUser *, std::map<CString, CXMPPChannel>> m_vUserChannels;
 	CString m_sServerName;
 };
 
